@@ -99,6 +99,18 @@ TransportControlUI::setup (TransportControlProvider* ui)
 	_rec_button.set_icon (ArdourIcon::RecButton);
 	_midi_panic_button.set_icon (ArdourIcon::TransportPanic);
 
+	if (CairoWidget::flat_buttons()) {
+		_click_button.set_corner_radius (-1);
+		_goto_start_button.set_corner_radius (-1);
+		_goto_end_button.set_corner_radius (-1);
+		_roll_button.set_corner_radius (-1);
+		_stop_button.set_corner_radius (-1);
+		_play_selection_button.set_corner_radius (-1);
+		_auto_loop_button.set_corner_radius (-1);
+		_rec_button.set_corner_radius (-1);
+		_midi_panic_button.set_corner_radius (-1);
+	}
+
 	/* transport control size-group */
 
 	Glib::RefPtr<SizeGroup> transport_button_size_group = SizeGroup::create (SIZE_GROUP_BOTH);
@@ -117,7 +129,8 @@ TransportControlUI::setup (TransportControlProvider* ui)
 #define PX_SCALE(px) std::max((float)px, rintf((float)px * UIConfiguration::instance().get_ui_scale()))
 
 	_click_button.set_size_request (PX_SCALE(20), PX_SCALE(20));
-	set_spacing (PX_SCALE(2));
+	const int transport_spacing = CairoWidget::flat_buttons() ? 4 : 2;
+	set_spacing (PX_SCALE(transport_spacing));
 
 #undef PX_SCALE
 

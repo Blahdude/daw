@@ -141,7 +141,7 @@ SurroundStrip::init ()
 		                           c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9],
 		                           b[0], b[1], b[2], b[3],
 		                           stp[0], stp[1], stp[2], stp[3],
-		                           (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1));
+		                           (CairoWidget::flat_buttons() ? 1 : (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1)));
 
 		_surround_meter_box.pack_start (*_meter[i], false, false, 0);
 	}
@@ -153,7 +153,7 @@ SurroundStrip::init ()
 		                           c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7], c[8], c[9],
 		                           b[0], b[1], b[2], b[3],
 		                           stp[0], stp[1], stp[2], stp[3],
-		                           (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1));
+		                           (CairoWidget::flat_buttons() ? 1 : (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1)));
 
 		_binaural_meter_box.pack_start (*_meter[i], false, false, 1);
 	}

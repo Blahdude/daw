@@ -157,7 +157,7 @@ ApplicationBar::on_parent_changed (Gtk::Widget*)
 
 	/* sub-layout for Sync | Shuttle (grow) */
 	HBox* ssbox = manage (new HBox);
-	ssbox->set_spacing (PX_SCALE(2));
+	ssbox->set_spacing (PX_SCALE(1));
 	ssbox->pack_start (_auto_return_button, false, false, 0);
 	ssbox->pack_start (_sync_button, false, false, 0);
 	ssbox->pack_start (_shuttle_box, true, true, 0);
@@ -299,7 +299,7 @@ ApplicationBar::on_parent_changed (Gtk::Widget*)
 
 	_table.set_spacings (0);
 	_table.set_row_spacings (4);
-	_table.set_border_width (1);
+	_table.set_border_width (0);
 
 	/* mark any optional widgets as no-show, so they don't expand the toolbar on load */
 	//_transport_spacer.set_no_show_all ();

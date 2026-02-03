@@ -395,6 +395,16 @@ UIConfiguration::load_color_theme (bool allow_own)
 
 	ColorsChanged ();
 
+	/* auto-configure rendering style based on the color theme */
+	std::string theme = get_color_file ();
+	if (theme == "modern") {
+		set_flat_buttons (true);
+		set_boxy_buttons (false);
+		set_waveform_gradient_depth (0.0);
+		set_timeline_item_gradient_depth (0.0);
+		set_ui_rc_file ("modern.rc");
+	}
+
 	return 0;
 }
 

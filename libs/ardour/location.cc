@@ -1190,6 +1190,14 @@ Locations::add_range (timepos_t const & start, timepos_t const &  end)
 	return loc;
 }
 
+Location*
+Locations::add_section (timepos_t const & start, timepos_t const & end, std::string const & name)
+{
+	Location* loc = new Location (_session, start, end, name, Location::IsSection);
+	add (loc, false);
+	return loc;
+}
+
 void
 Locations::remove (Location *loc)
 {

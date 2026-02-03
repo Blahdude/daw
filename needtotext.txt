@@ -1,0 +1,31 @@
+Need to Test: Plugin Discovery for AI Copilot
+
+1. Build and launch Ardour - verify no compile errors from the new plugin_manager.h includes and build_plugin_catalog() implementation
+2. Open AI Copilot window - check that it loads without errors (plugin catalog builds on construction)
+3. "what plugins do I have?" - verify it references the dynamic installed plugins list, not hardcoded URIs
+4. "add a compressor to Audio 1" - verify it picks a real installed plugin from the catalog
+5. "add reverb to the master bus" - regression test, should still work with dynamic lookup
+6. If AU/VST3 plugins are installed, ask it to add one by name - verify non-LV2 plugin types work
+7. Trigger a plugin rescan and confirm the catalog refreshes (PluginListChanged signal)
+
+Need to Test: Multi-Step Workflow Support for AI Copilot
+
+1. Build Ardour - verify no compile errors from workflow changes
+2. Single-step still works: "Mute track 1" should work in one step with [DONE], status shows "Step 1: Thinking..." then "Step 1: Executing..."
+3. Multi-step works: "Create 3 audio tracks and add EQ to each" should chain 2+ steps, status cycles through Step 1, Step 2, etc.
+4. Cancel mid-workflow: Start a multi-step request, click Cancel between steps - should abort cleanly
+5. Error recovery: Request something that will fail Lua, verify auto-retry once then abort
+6. Step limit: Set _workflow_max_steps to 2 temporarily, try a complex request, confirm it stops at the limit
+7. Text-only response: "What tracks do I have?" should respond without code and end cleanly
+8. Conversation trimming: Run a multi-step workflow and verify it doesn't blow up context (conversation trimmed to first + last 4 messages when > 6)
+
+Need to Test: Context Window Management for AI Copilot
+
+1. Build Ardour - verify no compile errors from context window changes
+2. Basic chat works: Send 5+ messages to the copilot and verify responses work normally
+3. Context injection: Verify Claude still sees current session state (ask "what tracks do I have?" after adding/removing tracks between messages)
+4. Retry-on-error: Send a request that will fail Lua execution, verify retry still works (retry message gets snapshot via build_api_messages)
+5. Multi-step workflow: Run a multi-step request, verify continue_workflow still passes session state correctly
+6. Chat display preserved: Verify the chat view still shows all messages even if internal pruning would have occurred
+7. Stored messages are raw: Confirm that _conversation stores only raw user text, not the full snapshot+catalog (would need debug logging or breakpoint)
+8. Pruning behavior: With a large plugin catalog, send many messages to approach 100K token estimate - verify oldest messages are dropped while keeping at least 2 recent exchanges

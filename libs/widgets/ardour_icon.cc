@@ -23,6 +23,7 @@
 #include "ytkmm/layout.h"
 
 #include "gtkmm2ext/colors.h"
+#include "gtkmm2ext/cairo_theme.h"
 #include "gtkmm2ext/rgb_macros.h"
 #include "widgets/ardour_icon.h"
 
@@ -39,38 +40,59 @@ using namespace ArdourWidgets::ArdourIcon;
 
 #define DEFAULT_LINE_WIDTH ceil (std::min (width, height) * .035)
 
-#define OUTLINEWIDTH 1.5 // px
+#define OUTLINEWIDTH 1.0 // px
 
-#define VECTORICONSTROKEFILLFG(fillalpha)             \
-  cairo_set_line_width (cr, OUTLINEWIDTH);          \
-  cairo_set_source_rgba (cr, 0, 0, 0, 1.0);         \
-  cairo_stroke_preserve (cr);                       \
-  Gtkmm2ext::set_source_rgba (cr, fg_color);        \
-  cairo_fill (cr);
+#define VECTORICONSTROKEFILLFG(fillalpha)                  \
+  if (Gtkmm2ext::CairoTheme::flat_buttons()) {             \
+    Gtkmm2ext::set_source_rgba (cr, fg_color);              \
+    cairo_fill (cr);                                        \
+  } else {                                                  \
+    cairo_set_line_width (cr, OUTLINEWIDTH);                \
+    cairo_set_source_rgba (cr, 0, 0, 0, 1.0);              \
+    cairo_stroke_preserve (cr);                             \
+    Gtkmm2ext::set_source_rgba (cr, fg_color);              \
+    cairo_fill (cr);                                        \
+  }
 
-#define VECTORICONSTROKEFILL(fillalpha)             \
-  cairo_set_line_width (cr, OUTLINEWIDTH);          \
-  cairo_set_source_rgba (cr, 0, 0, 0, 1.0);         \
-  cairo_stroke_preserve (cr);                       \
-  cairo_set_source_rgba (cr, 1, 1, 1, (fillalpha)); \
-  cairo_fill (cr);
+#define VECTORICONSTROKEFILL(fillalpha)                    \
+  if (Gtkmm2ext::CairoTheme::flat_buttons()) {             \
+    cairo_set_source_rgba (cr, 1, 1, 1, (fillalpha));      \
+    cairo_fill (cr);                                        \
+  } else {                                                  \
+    cairo_set_line_width (cr, OUTLINEWIDTH);                \
+    cairo_set_source_rgba (cr, 0, 0, 0, 1.0);              \
+    cairo_stroke_preserve (cr);                             \
+    cairo_set_source_rgba (cr, 1, 1, 1, (fillalpha));      \
+    cairo_fill (cr);                                        \
+  }
 
-#define VECTORICONOUTLINEFILL(color)             \
-  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND); \
-  cairo_set_line_width (cr, OUTLINEWIDTH);       \
-  ardour_icon_set_source_inv_rgba (cr, color);   \
-  cairo_stroke_preserve (cr);                    \
-  Gtkmm2ext::set_source_rgba (cr, color);        \
-  cairo_fill (cr);
+#define VECTORICONOUTLINEFILL(color)                       \
+  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);           \
+  if (Gtkmm2ext::CairoTheme::flat_buttons()) {             \
+    Gtkmm2ext::set_source_rgba (cr, color);                 \
+    cairo_fill (cr);                                        \
+  } else {                                                  \
+    cairo_set_line_width (cr, OUTLINEWIDTH);                \
+    ardour_icon_set_source_inv_rgba (cr, color);            \
+    cairo_stroke_preserve (cr);                             \
+    Gtkmm2ext::set_source_rgba (cr, color);                 \
+    cairo_fill (cr);                                        \
+  }
 
-#define VECTORICONSTROKEOUTLINE(LW, color)        \
-  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);  \
-  cairo_set_line_width (cr, (LW) + OUTLINEWIDTH); \
-  ardour_icon_set_source_inv_rgba (cr, color);    \
-  cairo_stroke_preserve (cr);                     \
-  Gtkmm2ext::set_source_rgba (cr, color);         \
-  cairo_set_line_width (cr, (LW));                \
-  cairo_stroke (cr);
+#define VECTORICONSTROKEOUTLINE(LW, color)                 \
+  cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);           \
+  if (Gtkmm2ext::CairoTheme::flat_buttons()) {             \
+    Gtkmm2ext::set_source_rgba (cr, color);                 \
+    cairo_set_line_width (cr, (LW));                        \
+    cairo_stroke (cr);                                      \
+  } else {                                                  \
+    cairo_set_line_width (cr, (LW) + OUTLINEWIDTH);         \
+    ardour_icon_set_source_inv_rgba (cr, color);            \
+    cairo_stroke_preserve (cr);                             \
+    Gtkmm2ext::set_source_rgba (cr, color);                 \
+    cairo_set_line_width (cr, (LW));                        \
+    cairo_stroke (cr);                                      \
+  }
 
 #define VECTORICONSTROKE(LW, color)              \
   cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND); \

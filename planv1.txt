@@ -1,0 +1,152 @@
+AI Copilot Feature Ideas - Beyond MVP
+======================================
+
+SMARTER INTERACTION
+-------------------
+- [DONE] Streaming responses: Show Claude's text as it arrives token-by-token
+  instead of waiting for the full response. Makes the copilot feel responsive
+  and alive. Uses Anthropic's streaming API (SSE).
+
+- [DONE] Multi-step workflows: Let the copilot chain multiple operations from a
+  single request. "Set up a podcast session" creates tracks, routing, plugins,
+  markers all in sequence. Could use a simple state machine or tool_use to break
+  complex requests into steps.
+
+- [DONE] Undo integration: Hybrid snapshot/native-undo approach. Snapshots
+  controllable values (gain, pan, mute, solo) and route IDs before execution,
+  detects native undo entries (e.g. MIDI note ops) during execution. "Undo"
+  button in status bar + natural language ("undo that", "revert"). Handles
+  Ctrl+Z interaction gracefully.
+
+- Conversation persistence: Save/load conversation history per session so users
+  can pick up where they left off after restarting Ardour.
+
+- Slash commands: Quick shortcuts like /mute all, /solo drums, /tempo 140 that
+  bypass the API entirely and execute common operations instantly.
+
+MUSIC GENERATION
+----------------
+- [DONE] Music generation knowledge: Added GM drum map, note durations, scale/
+  chord formulas, drum patterns, and generation tips to the system prompt.
+  Bridges Claude's music theory knowledge to Ardour's MIDI API (note numbers,
+  tick-based timing, channel conventions). Enables drum patterns, basslines,
+  melodies, arpeggiation, and chord progressions.
+
+- Drum patterns: Add GM drum map to the system prompt (kick=36, snare=38,
+  hi-hat=42, etc.). "Create a 4-on-the-floor house beat" or "make a breakbeat
+  pattern". Rhythmic pattern generation with velocity variations.
+
+- Basslines: Scale-aware bass generation. "Add a walking bass in C minor" or
+  "create an acid bassline". Use chord context from existing MIDI regions.
+
+- Melody generation: Simple melodic lines following scale patterns. "Add a
+  pentatonic melody over these chords". Could analyze existing chord regions
+  to stay in key.
+
+- Arrangement tools: "Create a song structure: 8-bar intro, 16-bar verse,
+  8-bar chorus, repeat" -- places markers, creates regions, copies/loops
+  sections automatically.
+
+- Arpeggiator: "Arpeggiate the C chord as 16th notes" -- converts block chords
+  into arpeggiated patterns within MIDI regions.
+
+- Humanization: Add slight timing and velocity variations to MIDI patterns to
+  make them feel less robotic. "Humanize the drum pattern".
+
+MIXING ASSISTANT
+----------------
+- [DONE] Session analysis: Copilot reads all levels, plugin chains, routing, pan
+  positions, and gives actionable mixing feedback. "Your kick and bass are both
+  centered and competing -- try high-passing the bass at 80Hz or adding slight
+  stereo width."
+
+- Auto-routing: "Create a drum bus and route all drum tracks to it" or "set up
+  a parallel compression bus for vocals". Creates buses, configures sends and
+  returns.
+
+- Reference mixing: "Set up a basic rock mix template" -- creates standard bus
+  structure (drums, bass, guitars, vocals, effects), adds standard plugins
+  (EQ, compression on each bus, limiter on master).
+
+- Gain staging: "Check my gain staging" -- analyzes levels at each point in the
+  signal chain and suggests adjustments.
+
+- Plugin chain suggestions: "What plugins should I add to the vocal track?" --
+  suggests based on genre, existing chain, and available plugins.
+
+- A/B comparison: "Compare the mix with and without the reverb on vocals" --
+  toggles plugins and lets the user listen to both versions.
+
+INFRASTRUCTURE
+--------------
+- [DONE] Plugin discovery: On startup or first use, scan the user's installed
+  plugins and build a catalog. The copilot then knows what's actually available
+  (AU, VST3, LV2) and can suggest plugins by name. Currently limited to
+  hardcoded built-in URIs.
+
+- Persistent memory: Remember user preferences across sessions. "I always use
+  128 BPM", "My template has 8 tracks", "I prefer mono drum tracks". Store in
+  a JSON file in the user config directory.
+
+- Error learning: Track which Lua API calls fail and automatically update the
+  system prompt or avoid known-broken patterns. Self-improving over time.
+
+- [DONE] Context window management: For long conversations, summarize older
+  messages to stay within token limits while preserving important context about
+  what was created/modified.
+
+- Rate limit handling: Queue requests when rate-limited, show estimated wait
+  time, auto-retry with backoff.
+
+ADVANCED FEATURES
+-----------------
+- Voice control: Speech-to-text integration so users can speak commands while
+  their hands are on instruments. "Hey Ardour, arm track 3 for recording."
+
+- Visual feedback: Highlight or flash the tracks/regions/plugins that the
+  copilot just modified so the user can see what changed.
+
+- [DONE] Automation curves: "Create a volume fade-in over the first 4 bars" or
+  "automate the reverb wet/dry from 0 to 50% during the chorus". Draw
+  automation points programmatically.
+
+- Region manipulation: Split, trim, move, duplicate, bounce regions via
+  natural language. "Split the vocal at every silence" or "duplicate the
+  chorus region 3 times".
+
+- Sidechain setup: "Sidechain the bass compressor from the kick" -- creates
+  the routing and configures the compressor's sidechain input.
+
+- Export assistant: "Export the mix as 44.1kHz 16-bit WAV" or "bounce the
+  drum bus to a stem". Configures and triggers export.
+
+- Recording workflow: "Set up for recording: arm track 1, set punch-in at
+  bar 5, punch-out at bar 13, enable count-in". Full recording preparation
+  from a single command.
+
+- Tempo/time signature: "Change tempo to 140 BPM" or "switch to 6/8 time
+  at bar 17". Tempo map manipulation.
+
+- MIDI CC / modulation: "Add a filter sweep from 0 to 127 over 8 bars" --
+  writes MIDI CC data into regions for controlling synth parameters.
+
+QUALITY OF LIFE
+---------------
+- Fuzzy track matching: Don't require exact track names. "Mute the drums"
+  should find tracks named "Drums", "Drum Bus", "Kit", etc. Use fuzzy
+  matching or ask Claude to pick the best match.
+
+- Confirmation for destructive ops: Before deleting tracks or removing
+  plugins, show a confirmation dialog (not just relying on Claude to ask).
+
+- History panel: Show a log of all executed Lua scripts with timestamps.
+  Let users re-run previous scripts or copy them for manual use.
+
+- Script export: "Save that last command as a Lua script" -- exports the
+  generated code to a .lua file for reuse outside the copilot.
+
+- Keyboard shortcut: Global shortcut to focus the copilot input field
+  from anywhere in Ardour without clicking.
+
+- Status indicators: Show token usage, API cost estimate, model being used.
+  Help users understand their usage.

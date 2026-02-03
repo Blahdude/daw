@@ -28,6 +28,7 @@
 #include "luainstance.h"
 #include "public_editor.h"
 #include "copilot_executor.h"
+#include "copilot_undo_record.h"
 #include "ui_config.h"
 
 using namespace std;
@@ -207,4 +208,49 @@ CopilotExecutor::execute (Session* session,
 	}
 
 	return true;
+}
+
+bool
+CopilotExecutor::execute (Session* session,
+                          const string& lua_code,
+                          string& error_msg,
+                          function<void(const string&)> on_output,
+                          CopilotUndoRecord& undo_record)
+{
+	/* Snapshot session state before execution */
+	undo_record.snapshot (session);
+
+	/* Run the standard execute path */
+	bool success = execute (session, lua_code, error_msg, on_output);
+
+	if (success) {
+		/* Detect native undo entries created during execution */
+		uint32_t depth_after = session->undo_depth ();
+		if (depth_after > undo_record.undo_depth_before ()) {
+			undo_record.native_undo_count = depth_after - undo_record.undo_depth_before ();
+		} else {
+			undo_record.native_undo_count = 0;
+		}
+	} else {
+		/* Execution failed -- abort any open reversible command left by the
+		 * failed script (e.g. begin_reversible_command was called but
+		 * commit_reversible_command was not reached due to Lua error).
+		 * This must happen before restore, otherwise starting a new
+		 * reversible command later can crash. */
+		if (session) {
+			session->abort_reversible_command ();
+		}
+
+		/* Revert any partial changes */
+		undo_record.native_undo_count = 0;
+		if (session) {
+			uint32_t depth_after = session->undo_depth ();
+			if (depth_after > undo_record.undo_depth_before ()) {
+				undo_record.native_undo_count = depth_after - undo_record.undo_depth_before ();
+			}
+		}
+		undo_record.restore (session);
+	}
+
+	return success;
 }

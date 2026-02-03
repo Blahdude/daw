@@ -305,8 +305,10 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	if (corner_radius < 0) {
 		/* L/R half circle */
 		corner_radius = get_height() / 2. - 2 * scale;
+	} else if (flat && corner_radius == 3.5f) {
+		corner_radius = std::max(2.f, 8.0f * scale);
 	} else {
-		std::max(2.f, corner_radius * scale);
+		corner_radius = std::max(2.f, corner_radius * scale);
 	}
 	corner_radius = boxy ? 0 : corner_radius;
 
@@ -370,9 +372,16 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 
 	// draw edge (filling a rect underneath, rather than stroking a border on top, allows the corners to be lighter-weight.
 	if ((_elements & (Body|Edge)) == (Body|Edge)) {
-		rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius + 1.5*scale);
-		Gtkmm2ext::set_source_rgba (cr, outline_color);
-		cairo_fill(cr);
+		if (flat) {
+			rounded_function (cr, 0.5, 0.5, get_width()-1, get_height()-1, corner_radius);
+			Gtkmm2ext::set_source_rgba (cr, outline_color);
+			cairo_set_line_width(cr, 1.0);
+			cairo_stroke(cr);
+		} else {
+			rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius + 1.5*scale);
+			Gtkmm2ext::set_source_rgba (cr, outline_color);
+			cairo_fill(cr);
+		}
 	}
 
 	// background fill
@@ -395,7 +404,7 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	// IMPLICIT ACTIVE: draw a border of the active color
 	if ((_elements & Body)==Body) {
 		if (active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
-			cairo_set_line_width (cr, 2.0*scale);
+			cairo_set_line_width (cr, flat ? 1.5*scale : 2.0*scale);
 			rounded_function (cr, 2*scale, 2*scale, get_width() - 4*scale, get_height() - 4*scale, corner_radius-0.5*scale);
 			Gtkmm2ext::set_source_rgba (cr, fill_active_color);
 			cairo_stroke (cr);
@@ -645,13 +654,15 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 		}
 
 		//black ring
-		cairo_set_source_rgb (cr, 0, 0, 0);
-		cairo_arc (cr, 0, 0, _diameter * .5 - 1 * scale, 0, 2 * M_PI);
-		cairo_fill(cr);
+		if (!flat) {
+			cairo_set_source_rgb (cr, 0, 0, 0);
+			cairo_arc (cr, 0, 0, _diameter * .5 - 1 * scale, 0, 2 * M_PI);
+			cairo_fill(cr);
+		}
 
 		//led color
 		Gtkmm2ext::set_source_rgba (cr, led_color);
-		cairo_arc (cr, 0, 0, _diameter * .5 - 3 * scale, 0, 2 * M_PI);
+		cairo_arc (cr, 0, 0, _diameter * .5 - (flat ? 1 : 3) * scale, 0, 2 * M_PI);
 		cairo_fill(cr);
 
 		cairo_restore (cr);
@@ -668,8 +679,14 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	if (UIConfigurationBase::instance().get_widget_prelight() && !((visual_state() & Gtkmm2ext::Insensitive))) {
 		if (_hovering) {
 			rounded_function (cr, 1, 1, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
-			cairo_set_source_rgba (cr, 0.905, 0.917, 0.925, 0.2);
+			cairo_set_source_rgba (cr, 0.905, 0.917, 0.925, flat ? 0.08 : 0.2);
 			cairo_fill (cr);
+			if (flat) {
+				rounded_function (cr, 0.5, 0.5, get_width() - 1, get_height() - 1, corner_radius);
+				cairo_set_source_rgba (cr, 1.0, 1.0, 1.0, 0.12);
+				cairo_set_line_width (cr, 1.0);
+				cairo_stroke (cr);
+			}
 		}
 	}
 
@@ -732,7 +749,7 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 	req->width = req->height = 0;
 	CairoWidget::on_size_request (req);
 
-	const float newdia = rintf (11.f * UIConfigurationBase::instance().get_ui_scale());
+	const float newdia = rintf ((flat_buttons() ? 9.f : 11.f) * UIConfigurationBase::instance().get_ui_scale());
 	if (_diameter != newdia) {
 		_pattern_height = 0;
 		_diameter = newdia;
@@ -754,13 +771,16 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 
 		} else if (_layout_ellipsize_width > 0 && _sizing_texts.empty()) {
 
-			req->height = std::max(req->height, (int) ceil(char_pixel_height() * BASELINESTRETCH + 1.0));
+			const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+			req->height = std::max(req->height, (int) ceil(char_pixel_height() * bls + 1.0));
 			req->width += _layout_ellipsize_width / PANGO_SCALE;
 
 		} else /*if (!_text.empty() || !_sizing_texts.empty()) */ {
 
-			req->height = std::max(req->height, (int) ceil(char_pixel_height() * BASELINESTRETCH + 1.0));
-			req->width += rint(_width_padding * char_pixel_width()); // padding
+			const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+			req->height = std::max(req->height, (int) ceil(char_pixel_height() * bls + 1.0));
+			const double effective_padding = (flat_buttons() && _width_padding == 1.65) ? 2.2 : _width_padding;
+			req->width += rint(effective_padding * char_pixel_width()); // padding
 
 			int sizing_text_width = 0, sizing_text_height = 0;
 
@@ -813,7 +833,8 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 	}
 
 	if (_elements & (VectorIcon | IconRenderCallback)) {
-		const int wh = std::max (8., std::max (ceil (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * BASELINESTRETCH + 1.)));
+		const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+		const int wh = std::max (8., std::max (ceil (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * bls + 1.)));
 		req->width += wh;
 		req->height = std::max(req->height, wh);
 	}
@@ -823,12 +844,14 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 		// forget everything above and just use a fixed square [em] size
 		// "TrackHeader Buttons" are single letter (usually uppercase)
 		// a SizeGroup is much less efficient (lots of gtk work under the hood for each track)
-		const int wh = std::max (rint (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * BASELINESTRETCH + 1.));
+		const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+		const int wh = std::max (rint (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * bls + 1.));
 		req->width  = wh;
 		req->height = wh;
 	}
 	else if (_tweaks & TransportIcon) { // same logic as above, but 4x bigger
-		const int wh = std::max (rint (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * BASELINESTRETCH + 1.));
+		const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+		const int wh = std::max (rint (TRACKHEADERBTNW * char_avg_pixel_width()), ceil (char_pixel_height() * bls + 1.));
 		req->width  = 2 * wh;
 		req->height = 2 * wh;
 	}
@@ -850,7 +873,8 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 
 	if (_tweaks & EnforceMinHeight) {
 		/* enforce a minumum em-based height (Mixbus: for all buttons) */
-		const int wh = std::max (rint (TRACKHEADERBTNW * char_pixel_height()), ceil (char_pixel_height() * BASELINESTRETCH + 1.));
+		const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+		const int wh = std::max (rint (TRACKHEADERBTNW * char_pixel_height()), ceil (char_pixel_height() * bls + 1.));
 		req->height = std::max(req->height, wh);
 	}
 
@@ -911,7 +935,7 @@ ArdourButton::set_colors ()
 	 */
 
 	Gtkmm2ext::HSV inactive (led_active_color);
-	inactive.v = 0.35;
+	inactive.v = flat_buttons() ? 0.20 : 0.35;
 
 	led_inactive_color = inactive.color ();
 }
@@ -990,6 +1014,11 @@ void ArdourButton::reset_fixed_colors ()
 void
 ArdourButton::build_patterns ()
 {
+	if (flat_buttons()) {
+		_pattern_height = get_height();
+		return;
+	}
+
 	if (convex_pattern) {
 		cairo_pattern_destroy (convex_pattern);
 		convex_pattern = 0;

@@ -311,7 +311,7 @@ LevelMeterBase::setup_meters (int len, int initial_width, int thin_width)
 		uint32_t c[10];
 		uint32_t b[4];
 		float stp[4];
-		int styleflags = UIConfiguration::instance().get_meter_style_led() ? 3 : 1;
+		int styleflags = CairoWidget::flat_buttons() ? 1 : (UIConfiguration::instance().get_meter_style_led() ? 3 : 1);
 		b[0] = UIConfiguration::instance().color ("meter background bottom");
 		b[1] = UIConfiguration::instance().color ("meter background top");
 		b[2] = 0x991122ff; // red highlight gradient Bot

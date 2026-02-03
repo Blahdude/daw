@@ -24,6 +24,8 @@ namespace ARDOUR {
 	class Session;
 }
 
+class CopilotUndoRecord;
+
 class CopilotExecutor {
 public:
 	CopilotExecutor ();
@@ -46,4 +48,13 @@ public:
 	              const std::string& lua_code,
 	              std::string& error_msg,
 	              std::function<void(const std::string&)> on_output);
+
+	/** Execute with undo record: snapshots before, detects native undo entries after.
+	 *  On failure, restores session state immediately.
+	 */
+	bool execute (ARDOUR::Session* session,
+	              const std::string& lua_code,
+	              std::string& error_msg,
+	              std::function<void(const std::string&)> on_output,
+	              CopilotUndoRecord& undo_record);
 };

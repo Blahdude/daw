@@ -161,7 +161,7 @@ ArdourKnob::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t*
 	}
 
 	const float scale             = std::min (width, height);
-	const float pointer_thickness = 3.0 * (scale / 80); // if the knob is 80 pixels wide, we want a 3-pix line on it
+	const float pointer_thickness = (flat_buttons() ? 2.0 : 3.0) * (scale / 80);
 
 	const float start_angle = ((180 - 65) * G_PI) / 180;
 	const float end_angle   = ((360 + 65) * G_PI) / 180;
@@ -201,7 +201,8 @@ ArdourKnob::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t*
 		float progress_radius       = inner_progress_radius + progress_width / 2.0;
 
 		/* dark arc background */
-		cairo_set_source_rgb (cr, 0.3, 0.3, 0.3);
+		uint32_t arc_bg_color = UIConfigurationBase::instance().color ("knob arc background");
+		Gtkmm2ext::set_source_rgba (cr, arc_bg_color);
 		cairo_set_line_width (cr, progress_width);
 		cairo_arc (cr, 0, 0, progress_radius, start_angle, end_angle);
 		cairo_stroke (cr);
@@ -316,8 +317,8 @@ ArdourKnob::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t*
 	}
 
 	/* black knob border */
-	cairo_set_line_width (cr, border_width);
-	cairo_set_source_rgba (cr, 0, 0, 0, 1);
+	cairo_set_line_width (cr, flat ? 0.5 : border_width);
+	cairo_set_source_rgba (cr, 0, 0, 0, flat ? 0.3 : 1.0);
 	cairo_arc (cr, 0, 0, center_radius, 0, 2.0 * G_PI);
 	cairo_stroke (cr);
 

@@ -1,0 +1,142 @@
+Automation Curves for AI Copilot
+=================================
+
+1. Plugin automation: Ask "add reverb to master then make reverb go crazy after 3 seconds" -- should use ARDOUR.LuaAPI.plugin_automation() (re-test after crash fix)
+2. Context awareness: Create a track with Touch-mode gain, send a message -- verify the snapshot shows Auto: Gain:Touch
+3. Clear automation: Ask "clear all automation on vocals" -- should use al:clear_list() with undo (re-test after crash fix)
+4. Undo support: Verify all generated automation code uses begin_reversible_command/commit_reversible_command
+5. Time arithmetic: Ask "add a volume ramp from 0 to full over 2 bars" -- verify correct time calculations
+
+Copilot Undo Integration
+=========================
+
+1. Track creation undo: Create a track via copilot ("add a stereo audio track"), undo -- track is removed
+2. MIDI undo: Add MIDI notes via copilot (uses apply_diff_command_as_commit), undo -- notes removed via native undo + controllable values reverted
+3. External Ctrl+Z: Execute copilot command, press Ctrl+Z in the editor, then click copilot "Undo" -- handles gracefully without crashing
+4. Double undo: Undo once, then try undo again -- second attempt reports "Nothing to undo"
+5. Failed execution: Send a command that produces a Lua error -- session state should be unchanged (auto-reverted)
+6. Multiple commands: Run two copilot commands in sequence without undoing -- only the last one is undoable (single-level undo)
+7. Workflow undo: Multi-step workflow completes, undo -- all steps from the workflow are reverted
+
+Session Analysis / Mixing Advice for AI Copilot
+=================================================
+
+1. General analysis: Ask "analyze my mix" -- verify Claude gives structured text feedback covering gain, panning, plugins, and session organization without generating Lua code
+2. Gain staging: Ask "how's my gain staging?" -- verify focused gain-level analysis flagging tracks above 0 dB or at -inf dB
+3. Plugin suggestions: Ask "what plugins am I missing?" -- verify plugin chain suggestions based on inferred track roles
+4. Panning advice: Set up a session with everything panned center, ask for mix advice -- verify it suggests spreading stereo image
+5. Role inference: Create tracks named "Kick", "Bass", "Vox" -- ask for analysis and verify role-specific advice (e.g., bass should be centered)
+6. Follow-up action: Ask "fix the panning" after an analysis response -- verify Claude switches back to generating Lua code
+
+Music Generation Knowledge in System Prompt
+=============================================
+
+1. Boom-bap: Ask "Boom-bap beat with open hi-hat" -- should use correct drum map numbers (Kick=36, Snare=38, OpenHH=46) and pattern
+2. Walking bass: Ask "Walking bass in C minor, 8 bars" -- should use notes in C minor scale, bass octave range (MIDI 36-59)
+3. Velocity variation: Verify generated patterns use appropriate velocity ranges (ghost/soft/normal/accent)
+4. Multi-bar: Verify multi-bar patterns correctly offset beats per bar (bar_index * 4)
+5. Region sizing: Verify generated code sizes the MIDI region to fit all bars
+
+Sends & Returns for AI Copilot
+================================
+
+1. Create send: Ask "create a reverb bus and send the vocal track to it" -- should create bus with new_audio_route then add_aux_send
+2. Send level: Ask "set the send level on vocals to -6dB" -- should use nth_send/to_send/gain_control with correct dB conversion
+3. List sends: Ask "show me all the sends in this session" -- should iterate nth_send and print target names/levels
+4. Remove send: Ask "remove the send from vocals to reverb bus" -- should use nth_send + remove_processor
+5. Context snapshot: Set up tracks with sends, ask "analyze my mix" -- verify sends appear in session state (e.g., Send 0 -> "Reverb Bus" | -6.0 dB)
+6. Multiple sends: Ask "add a send from all tracks to a new delay bus at -12dB" -- should create bus, iterate routes, add sends, set levels
+7. External send: Ask "add an external send to vocals" -- should use ARDOUR.LuaAPI.new_send
+8. Undo: Create a send via copilot, say "undo that" -- send is removed
+
+Region Editing for AI Copilot
+===============================
+
+1. Split: Ask "split the first region on Audio 1 at the 10 second mark" -- should generate Lua with playlist:split_region()
+2. Trim: Ask "trim the vocals region to start at 5 seconds" -- should generate Lua with region:trim_front()
+3. Fade in: Ask "add a 500ms fade-in to the first region on Guitar" -- should use set_fade_in_length with timecnt_t.from_samples
+4. Duplicate: Ask "duplicate the drum region 3 times" -- should use playlist:duplicate() with times=3
+5. Normalize: Ask "normalize the vocals" -- should use ar:normalize(peak, 0.0) or maximum_amplitude + set_scale_amplitude
+6. Move: Ask "move the intro region to bar 5" -- should use region:set_position()
+7. Bounce: Ask "bounce the guitar track from 0:00 to 1:00" -- should use track:bounce_range()
+8. Mute region: Ask "mute the second region on Audio 1" -- should use region:set_muted(true)
+9. Lock region: Ask "lock the vocals region" -- should use region:set_locked(true)
+10. Layering: Ask "bring the top region to front on Audio 1" -- should use region:raise_to_top()
+11. Context snapshot: Open copilot with a session containing regions -- verify context snapshot includes region names and positions (e.g., Regions: "Vocals_01" 0:00.0-0:32.5)
+12. Time-stretch: Ask "stretch the drum region to double length" -- should use ARDOUR.LuaAPI.Rubberband with stretch_ratio=2.0
+13. Undo: After each copilot region operation, press undo -- operations should revert cleanly
+14. Normalize binding: Ask "normalize the vocals to -3dB" -- should use ar:normalize(peak, -3.0) with the new Lua binding
+
+Tempo & Meter Support for AI Copilot
+======================================
+
+1. Context snapshot: Open a session, open the Copilot, send a message -- verify the snapshot includes tempo/meter inline (e.g., "| 120 BPM | 4/4") and a "Tempo Map:" section listing all tempo and meter points
+2. Query BPM: Ask "what is the current tempo?" -- verify it reads from the tempo map using Temporal.TempoMap.read() and tempo_at()
+3. Set tempo: Ask "set the tempo to 140 BPM" -- verify it generates correct Lua using write_copy()/set_tempo()/update() pattern
+4. Set meter: Ask "change the time signature to 3/4" -- verify correct set_meter() code with Temporal.Meter(3, 4)
+5. Tempo ramp: Ask "create a tempo ramp from 120 to 160 BPM" -- verify set_ramped() is used with different start/end BPM
+6. Multi-point: Ask "set 120 BPM for the first 8 bars then 140 BPM after" -- verify multiple set_tempo() calls in one write_copy()/update() block
+7. BBT query: Ask "what bar am I on?" -- verify it uses bbt_at() to convert the playhead position
+8. MIDI integration: Ask "create a 4-bar drum pattern" -- verify it reads actual tempo from the tempo map instead of hardcoding 120 BPM
+9. Multiple tempo/meter changes: Set tempo then change meter in sequence -- verify both changes persist correctly
+
+Route Group Support for AI Copilot
+====================================
+
+1. Lua bindings: Open Window > Scripting and run:
+   local g = Session:new_route_group("test")
+   print(g:name())
+   local r = Session:route_by_name("Audio 1")
+   if r then g:add(r); print(r:route_group():name()) end
+   print(Session:route_group_by_name("test"):name())
+   Session:remove_route_group(g)
+2. Context snapshot: Create a route group with members, send a copilot message -- verify the snapshot shows Group: "name" on each member route and a "Route Groups:" section listing the group with shared properties and member names
+3. Copilot end-to-end: Ask "create a route group called Drums, add Kick and Snare to it, and enable gain sharing" -- verify group is created with correct members and gain sharing enabled
+4. Property sharing: Create a group with gain sharing, adjust one member's fader -- verify other members follow
+5. Nil safety: Ask copilot about a route's group when it has none -- verify generated code nil-checks route:route_group()
+6. Group deletion: Ask "delete the Drums group" -- verify Session:remove_route_group() is used and routes remain
+
+Port/IO Routing Support for AI Copilot
+========================================
+
+1. Lua binding: Open Window > Scripting and run:
+   local r = Session:route_by_name("Audio 1")
+   if r then
+     local port = r:input():audio(0)
+     print("Port: " .. port:name())
+     print("Connected: " .. tostring(port:connected()))
+     local _, t = port:get_connections(C.StringVector())
+     for c in t[2]:iter() do print("  -> " .. c) end
+   end
+2. Engine port listing: Open Window > Scripting and run:
+   local engine = Session:engine()
+   local _, t = engine:get_physical_inputs(ARDOUR.DataType.audio(), C.StringVector())
+   for name in t[2]:iter() do print("HW in: " .. name) end
+3. Context snapshot: Open copilot with a session that has tracks connected to hardware -- verify I/O lines appear showing system:capture_* / system:playback_* (e.g., "I/O: In: system:capture_1 | Out: Master:in 1, Master:in 2")
+4. Connect input: Ask "connect Audio 1's input to capture 3" -- should generate route:input():audio(0):connect("system:capture_3")
+5. Disconnect all: Ask "disconnect all inputs on Vocals" -- should generate route:input():disconnect_all(nil)
+6. List hardware inputs: Ask "list all hardware inputs" -- should use engine:get_physical_inputs()
+7. Sidechain: Ask "set up a sidechain from Kick to the compressor on Bass" -- should generate the full send+sidechain pattern
+8. Route-to-route: Ask "connect Guitar output to Bus 1 input" -- should use src:output():audio(0):connect(dst:input():audio(0):name())
+9. Engine-level connect: Ask "connect Audio 1 out 1 to Bus 1 in 1" -- should use engine:connect("Audio 1:out 1", "Bus 1:in 1")
+10. Undo: After a copilot routing operation, say "undo that" -- operation should revert cleanly
+
+Section Operations for AI Copilot
+====================================
+
+1. Lua binding: Open Window > Scripting and run:
+   local sr = Session:sample_rate()
+   Session:locations():add_section(Temporal.timepos_t(0), Temporal.timepos_t(sr * 16), "Intro")
+   for l in Session:locations():list():iter() do
+     if l:is_section() then print(l:name()) end
+   end
+   -- Should print "Intro" and show an arrangement marker in the editor
+2. Create sections: Ask "create section markers for: Intro 0-16s, Verse 16-48s, Chorus 48-64s" -- should use add_section() three times with correct sample positions
+3. Duplicate section: Ask "duplicate the chorus" -- should find section marker by name, use cut_copy_section with CopyPaste
+4. Delete section: Ask "delete the intro" -- should find section marker by name, use cut_copy_section with Delete
+5. Insert silence: Ask "insert 4 bars of silence at the beginning" -- should use cut_copy_section with Insert
+6. Move section: Ask "move the bridge section to after the second chorus" -- should use cut_copy_section with CutPaste
+7. Context snapshot: Create section markers, open copilot, ask "analyze my session" -- verify sections appear under "Sections:" header with start-end ranges (e.g., "Intro" 0:00.0 - 0:16.0), separate from regular markers
+8. Section vs marker separation: Create both section markers and regular markers -- verify context snapshot shows them under separate headers ("Sections:" and "Markers:")
+9. Remove section marker: Ask "remove the intro section marker" -- should iterate locations, find by name + is_section(), use remove()
+10. Undo: After a copilot section operation, say "undo that" -- operation should revert cleanly

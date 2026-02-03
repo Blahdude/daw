@@ -114,6 +114,9 @@ private:
 
 	void set_colors ();
 	uint32_t _phead_color;
+	uint32_t _bg_color;
+	uint32_t _track_color;
+	uint32_t _marker_color;
 
 	//used for zooming
 	int _last_mx;

@@ -102,6 +102,9 @@ ArdourFader::find_pattern (double afr, double afg, double afb,
 void
 ArdourFader::create_patterns ()
 {
+	if (flat_buttons()) {
+		return;
+	}
 	Gdk::Color c = fg_color (get_state());
 	float fr, fg, fb;
 	float br, bg, bb;
@@ -267,12 +270,13 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 	cairo_rectangle (cr, 0, 0, w, h);
 	cairo_fill(cr);
 
-	cairo_set_line_width (cr, 2);
+	cairo_set_line_width (cr, flat_buttons() ? 1 : 2);
 	Gtkmm2ext::set_source_rgba (cr, outline_color);
 
 
 	cairo_matrix_t matrix;
-	Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, CORNER_RADIUS);
+	const double cr_val = flat_buttons() ? 2.0 : CORNER_RADIUS;
+	Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
 	// we use a 'trick' here: The stoke is off by .5px but filling the interior area
 	// after a stroke of 2px width results in an outline of 1px
 	cairo_stroke_preserve(cr);
@@ -292,9 +296,19 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 			cairo_fill (cr);
 			CairoWidget::set_source_rgb_a (cr, fg_color (get_state()), 1);
 			Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, ds + CORNER_OFFSET,
-					w - CORNER_SIZE, h - ds - CORNER_SIZE, CORNER_RADIUS);
+					w - CORNER_SIZE, h - ds - CORNER_SIZE, cr_val);
 		}
 		cairo_fill (cr);
+
+		/* flat handle indicator at fader boundary */
+		if (CairoWidget::flat_buttons()) {
+			cairo_set_source_rgba(cr, 1, 1, 1, 0.7);
+			cairo_set_line_width(cr, 1.5);
+			cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+			cairo_move_to (cr, 3, ds + CORNER_OFFSET);
+			cairo_line_to (cr, w - 3, ds + CORNER_OFFSET);
+			cairo_stroke (cr);
+		}
 
 	} else {
 
@@ -322,9 +336,19 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 			cairo_fill (cr);
 			CairoWidget::set_source_rgb_a (cr, fg_color (get_state()), 1);
 			Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET,
-					ds - CORNER_SIZE, h - CORNER_SIZE, CORNER_RADIUS);
+					ds - CORNER_SIZE, h - CORNER_SIZE, cr_val);
 		}
 		cairo_fill (cr);
+
+		/* flat handle indicator at fader boundary */
+		if (CairoWidget::flat_buttons()) {
+			cairo_set_source_rgba(cr, 1, 1, 1, 0.7);
+			cairo_set_line_width(cr, 1.5);
+			cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
+			cairo_move_to (cr, ds, 3);
+			cairo_line_to (cr, ds, h - 3);
+			cairo_stroke (cr);
+		}
 	}
 
 	/* draw the unity-position line if it's not at either end*/
@@ -377,11 +401,11 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 	}
 
 	if (!get_sensitive()) {
-		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, CORNER_RADIUS);
+		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
 		cairo_set_source_rgba (cr, 0.505, 0.517, 0.525, 0.4);
 		cairo_fill (cr);
 	} else if (_hovering && CairoWidget::widget_prelight() && !have_explicit_fg) {
-		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, CORNER_RADIUS);
+		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
 		cairo_set_source_rgba (cr, 0.905, 0.917, 0.925, 0.1);
 		cairo_fill (cr);
 	}

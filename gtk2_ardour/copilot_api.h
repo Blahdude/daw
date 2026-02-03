@@ -23,6 +23,8 @@
 #include <atomic>
 
 #include <pthread.h>
+#include <glibmm/threads.h>
+#include <sigc++/connection.h>
 
 struct CopilotMessage {
 	std::string role;    /* "user" or "assistant" */
@@ -49,7 +51,8 @@ public:
 		const std::string& system_prompt,
 		const std::vector<CopilotMessage>& messages,
 		std::function<void(const std::string&)> on_response,
-		std::function<void(const std::string&)> on_error
+		std::function<void(const std::string&)> on_error,
+		std::function<void(const std::string&)> on_stream_delta = nullptr
 	);
 
 	/* Cancel any in-flight request */
@@ -76,6 +79,23 @@ private:
 	/* callbacks (stored, invoked on GUI thread) */
 	std::function<void(const std::string&)> _on_response;
 	std::function<void(const std::string&)> _on_error;
+	std::function<void(const std::string&)> _on_stream_delta;
+
+	/* streaming support */
+	bool _streaming;
+
+	Glib::Threads::Mutex _stream_mutex;
+	std::string _stream_pending;        /* text waiting to be delivered to GUI */
+	std::string _stream_accumulated;    /* full response text so far */
+	std::string _stream_raw_response;   /* raw bytes for error extraction */
+	std::string _sse_line_buffer;       /* partial SSE line buffer */
+
+	sigc::connection _stream_timer_connection;
+	bool on_stream_timer ();
+
+	static size_t stream_write_callback (void* ptr, size_t size, size_t nmemb, void* data);
+	void parse_sse_chunk (const char* data, size_t size);
+	std::string extract_sse_text_delta (const char* json_data, size_t json_size);
 
 	/* idle callback to deliver result on GUI thread */
 	bool on_idle_deliver_result ();

@@ -438,6 +438,9 @@ ARDOUR::LuaAPI::plugin_automation (lua_State *L)
 	}
 
 	std::shared_ptr<AutomationControl> c = pi->automation_control (Evoral::Parameter (PluginAutomation, 0, controlid));
+	if (!c) {
+		return luaL_error (L, "Cannot get automation control for this parameter");
+	}
 
 	luabridge::Stack<std::shared_ptr<AutomationList> >::push (L, c->alist ());
 	luabridge::Stack<std::shared_ptr<Evoral::ControlList> >::push (L, c->list ());

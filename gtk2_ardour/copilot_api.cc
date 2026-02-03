@@ -36,6 +36,8 @@
 
 using namespace std;
 
+static string find_json_string (const char* json, size_t len, const string& key);
+
 static size_t
 write_callback (void* ptr, size_t size, size_t nmemb, void* data)
 {
@@ -49,6 +51,7 @@ CopilotApi::CopilotApi ()
 	: _busy (false)
 	, _cancel (false)
 	, _thread_active (false)
+	, _streaming (false)
 {
 }
 
@@ -95,7 +98,8 @@ CopilotApi::send_request (
 	const string& system_prompt,
 	const vector<CopilotMessage>& messages,
 	function<void(const string&)> on_response,
-	function<void(const string&)> on_error)
+	function<void(const string&)> on_error,
+	function<void(const string&)> on_stream_delta)
 {
 	if (_busy.load ()) {
 		if (on_error) {
@@ -114,8 +118,14 @@ CopilotApi::send_request (
 	_request_messages = messages;
 	_on_response = on_response;
 	_on_error = on_error;
+	_on_stream_delta = on_stream_delta;
+	_streaming = (on_stream_delta != nullptr);
 	_response_text.clear ();
 	_error_text.clear ();
+	_stream_pending.clear ();
+	_stream_accumulated.clear ();
+	_stream_raw_response.clear ();
+	_sse_line_buffer.clear ();
 	_cancel.store (false);
 	_busy.store (true);
 
@@ -144,6 +154,102 @@ CopilotApi::thread_func (void* arg)
 	return NULL;
 }
 
+size_t
+CopilotApi::stream_write_callback (void* ptr, size_t size, size_t nmemb, void* data)
+{
+	CopilotApi* self = static_cast<CopilotApi*> (data);
+	size_t realsize = size * nmemb;
+
+	if (self->_cancel.load ()) {
+		return 0; /* abort transfer */
+	}
+
+	self->_stream_raw_response.append (static_cast<char*> (ptr), realsize);
+	self->parse_sse_chunk (static_cast<char*> (ptr), realsize);
+
+	return realsize;
+}
+
+void
+CopilotApi::parse_sse_chunk (const char* data, size_t size)
+{
+	_sse_line_buffer.append (data, size);
+
+	size_t pos = 0;
+	while (pos < _sse_line_buffer.size ()) {
+		size_t nl = _sse_line_buffer.find ('\n', pos);
+		if (nl == string::npos) {
+			break; /* incomplete line, wait for more data */
+		}
+
+		string line = _sse_line_buffer.substr (pos, nl - pos);
+		pos = nl + 1;
+
+		/* strip trailing \r */
+		if (!line.empty () && line.back () == '\r') {
+			line.pop_back ();
+		}
+
+		/* SSE format: lines starting with "data: " carry JSON payload */
+		if (line.compare (0, 6, "data: ") == 0) {
+			string json_str = line.substr (6);
+
+			/* check for stream end marker */
+			if (json_str == "[DONE]") {
+				continue;
+			}
+
+			string delta = extract_sse_text_delta (json_str.c_str (), json_str.size ());
+			if (!delta.empty ()) {
+				Glib::Threads::Mutex::Lock lm (_stream_mutex);
+				_stream_pending += delta;
+				_stream_accumulated += delta;
+			}
+		} else if (line.compare (0, 7, "event: ") == 0) {
+			string event_type = line.substr (7);
+			if (event_type == "error") {
+				/* next data line will contain error JSON */
+			}
+		}
+	}
+
+	/* keep any incomplete trailing line */
+	if (pos < _sse_line_buffer.size ()) {
+		_sse_line_buffer = _sse_line_buffer.substr (pos);
+	} else {
+		_sse_line_buffer.clear ();
+	}
+}
+
+string
+CopilotApi::extract_sse_text_delta (const char* json_data, size_t json_size)
+{
+	/* SSE data for text deltas:
+	 * {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"token"}}
+	 */
+	string type = find_json_string (json_data, json_size, "type");
+	if (type == "content_block_delta") {
+		return find_json_string (json_data, json_size, "text");
+	}
+	return "";
+}
+
+bool
+CopilotApi::on_stream_timer ()
+{
+	string chunk;
+	{
+		Glib::Threads::Mutex::Lock lm (_stream_mutex);
+		chunk.swap (_stream_pending);
+	}
+
+	if (!chunk.empty () && _on_stream_delta) {
+		_on_stream_delta (chunk);
+	}
+
+	return _busy.load (); /* auto-disconnect when request completes */
+}
+
 void
 CopilotApi::do_request ()
 {
@@ -170,9 +276,23 @@ CopilotApi::do_request ()
 	curl_easy_setopt (curl, CURLOPT_HTTPHEADER, headers);
 	curl_easy_setopt (curl, CURLOPT_POSTFIELDS, json_payload.c_str ());
 	curl_easy_setopt (curl, CURLOPT_POSTFIELDSIZE, (long)json_payload.size ());
-	curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, write_callback);
-	curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_data);
-	curl_easy_setopt (curl, CURLOPT_TIMEOUT, 60L);
+
+	if (_streaming) {
+		curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, stream_write_callback);
+		curl_easy_setopt (curl, CURLOPT_WRITEDATA, this);
+		curl_easy_setopt (curl, CURLOPT_TIMEOUT, 0L);
+		curl_easy_setopt (curl, CURLOPT_LOW_SPEED_LIMIT, 1L);
+		curl_easy_setopt (curl, CURLOPT_LOW_SPEED_TIME, 30L);
+
+		/* start GUI-thread timer for delivering stream deltas */
+		_stream_timer_connection = Glib::signal_timeout ().connect (
+			sigc::mem_fun (*this, &CopilotApi::on_stream_timer), 50);
+	} else {
+		curl_easy_setopt (curl, CURLOPT_WRITEFUNCTION, write_callback);
+		curl_easy_setopt (curl, CURLOPT_WRITEDATA, &response_data);
+		curl_easy_setopt (curl, CURLOPT_TIMEOUT, 60L);
+	}
+
 	curl_easy_setopt (curl, CURLOPT_CONNECTTIMEOUT, 10L);
 
 	PBD::CCurl::ca_setopt (curl);
@@ -181,6 +301,10 @@ CopilotApi::do_request ()
 
 	curl_slist_free_all (headers);
 
+	if (_streaming) {
+		_stream_timer_connection.disconnect ();
+	}
+
 	if (_cancel.load ()) {
 		_error_text = "Request cancelled";
 		_busy.store (false);
@@ -188,8 +312,16 @@ CopilotApi::do_request ()
 		return;
 	}
 
-	if (res != CURLE_OK) {
+	if (res != CURLE_OK && res != CURLE_WRITE_ERROR) {
 		_error_text = string_compose ("Network error: %1", curl_easy_strerror (res));
+		_busy.store (false);
+		Glib::signal_idle ().connect (sigc::mem_fun (*this, &CopilotApi::on_idle_deliver_result));
+		return;
+	}
+
+	/* CURLE_WRITE_ERROR may come from stream_write_callback returning 0 on cancel */
+	if (res == CURLE_WRITE_ERROR && _cancel.load ()) {
+		_error_text = "Request cancelled";
 		_busy.store (false);
 		Glib::signal_idle ().connect (sigc::mem_fun (*this, &CopilotApi::on_idle_deliver_result));
 		return;
@@ -199,7 +331,8 @@ CopilotApi::do_request ()
 	curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_status);
 
 	if (http_status != 200) {
-		string api_err = extract_error_message (response_data.c_str (), response_data.size ());
+		const string& raw = _streaming ? _stream_raw_response : response_data;
+		string api_err = extract_error_message (raw.c_str (), raw.size ());
 		if (api_err.empty ()) {
 			_error_text = string_compose ("API error (HTTP %1)", http_status);
 		} else {
@@ -210,9 +343,18 @@ CopilotApi::do_request ()
 		return;
 	}
 
-	_response_text = extract_response_text (response_data.c_str (), response_data.size ());
-	if (_response_text.empty ()) {
-		_error_text = "Failed to parse API response";
+	if (_streaming) {
+		_response_text = _stream_accumulated;
+		if (_response_text.empty () && !_error_text.empty ()) {
+			/* error was set during SSE parsing */
+		} else if (_response_text.empty ()) {
+			_error_text = "Failed to parse streaming API response";
+		}
+	} else {
+		_response_text = extract_response_text (response_data.c_str (), response_data.size ());
+		if (_response_text.empty ()) {
+			_error_text = "Failed to parse API response";
+		}
 	}
 
 	_busy.store (false);
@@ -270,7 +412,10 @@ CopilotApi::build_json_payload (const string& system_prompt,
 	ostringstream json;
 	json << "{";
 	json << "\"model\":\"claude-sonnet-4-20250514\",";
-	json << "\"max_tokens\":2048,";
+	json << "\"max_tokens\":4096,";
+	if (_streaming) {
+		json << "\"stream\":true,";
+	}
 	json << "\"system\":\"" << escape_json (system_prompt) << "\",";
 	json << "\"messages\":[";
 

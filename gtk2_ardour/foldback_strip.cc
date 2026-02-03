@@ -459,7 +459,7 @@ FoldbackStrip::init ()
 	                        89.125,
 	                        106.375,
 	                        115.0,
-	                        (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1));
+	                        (CairoWidget::flat_buttons() ? 1 : (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1)));
 
 	_level_control.set_size_request (PX_SCALE (50), PX_SCALE (50));
 	_level_control.set_tooltip_prefix (_("Level: "));

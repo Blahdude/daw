@@ -190,7 +190,7 @@ InputPortMonitor::setup_audio_meter ()
 			89.125,  // 115.0 * log_meter0dB(-9);
 			106.375, // 115.0 * log_meter0dB(-3);
 			115.0,   // 115.0 * log_meter0dB(0);
-			(UIConfiguration::instance ().get_meter_style_led () ? 3 : 1));
+			(CairoWidget::flat_buttons() ? 1 : (UIConfiguration::instance ().get_meter_style_led () ? 3 : 1)));
 
 	_bin.add (*_audio_meter);
 	_bin.show ();

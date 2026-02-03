@@ -208,7 +208,7 @@ MixerStrip::init ()
 	hide_button.set_tweaks (ArdourButton::Square);
 	set_tooltip (&hide_button, _("Hide this mixer strip"));
 
-	input_button_box.set_spacing(2);
+	input_button_box.set_spacing(CairoWidget::flat_buttons() ? 2 : 1);
 	input_button_box.pack_start (input_button, true, true);
 
 	bottom_button_table.attach (gpm.meter_point_button, 1, 2, 0, 1);
@@ -235,14 +235,14 @@ MixerStrip::init ()
 	solo_isolated_led->set_text (_("Iso"));
 
 	solo_iso_table.set_homogeneous (true);
-	solo_iso_table.set_spacings (2);
+	solo_iso_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
 	solo_iso_table.attach (*solo_isolated_led, 0, 1, 0, 1);
 	solo_iso_table.attach (*solo_safe_led, 1, 2, 0, 1);
 	solo_iso_table.show ();
 
 	rec_mon_table.set_homogeneous (true);
-	rec_mon_table.set_row_spacings (2);
-	rec_mon_table.set_col_spacings (2);
+	rec_mon_table.set_row_spacings (CairoWidget::flat_buttons() ? 2 : 1);
+	rec_mon_table.set_col_spacings (CairoWidget::flat_buttons() ? 2 : 1);
 	if (ARDOUR::Profile->get_mixbus()) {
 		rec_mon_table.resize (1, 3);
 		rec_mon_table.attach (*monitor_input_button, 1, 2, 0, 1);
@@ -274,9 +274,9 @@ MixerStrip::init ()
 	}
 
 	mute_solo_table.set_homogeneous (true);
-	mute_solo_table.set_spacings (2);
+	mute_solo_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
 
-	bottom_button_table.set_spacings (2);
+	bottom_button_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
 	bottom_button_table.set_homogeneous (true);
 	bottom_button_table.attach (gpm.gain_automation_state_button, 0, 1, 0, 1);
 	bottom_button_table.attach (group_button, 0, 1, 1, 2);
@@ -308,8 +308,8 @@ MixerStrip::init ()
 	input_button_box.pack_start (trim_control, false, false);
 
 	global_vpacker.set_no_show_all ();
-	global_vpacker.set_border_width (1);
-	global_vpacker.set_spacing (2);
+	global_vpacker.set_border_width (CairoWidget::flat_buttons() ? 2 : 0);
+	global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 2 : 1);
 
 	width_button.set_name ("mixer strip button");
 	hide_button.set_name ("mixer strip button");

@@ -212,9 +212,10 @@ FastMeter::generate_meter_pattern (
 
 	if ((styleflags & 1) && !no_rgba_overlay) {
 		cairo_pattern_t* shade_pattern = cairo_pattern_create_linear (0.0, 0.0, width, 0.0);
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 0,   0.0, 0.0, 0.0, 0.15);
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 0.4, 1.0, 1.0, 1.0, 0.05);
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 1,   0.0, 0.0, 0.0, 0.25);
+		const double si = CairoWidget::flat_buttons() ? 0.5 : 1.0;
+		cairo_pattern_add_color_stop_rgba (shade_pattern, 0,   0.0, 0.0, 0.0, 0.15 * si);
+		cairo_pattern_add_color_stop_rgba (shade_pattern, 0.4, 1.0, 1.0, 1.0, 0.05 * si);
+		cairo_pattern_add_color_stop_rgba (shade_pattern, 1,   0.0, 0.0, 0.0, 0.25 * si);
 
 		cairo_surface_t* surface;
 		cairo_t* tc = 0;
@@ -567,7 +568,7 @@ FastMeter::vertical_expose (cairo_t* cr, cairo_rectangle_t* area)
 	GdkRectangle eventarea;
 
 	Gtkmm2ext::set_source_rgba (cr, outline_color);
-	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 2);
+	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, CairoWidget::flat_buttons() ? 1 : 2);
 	cairo_stroke (cr);
 
 	top_of_meter = (gint) floor (pixheight * current_level);
@@ -640,7 +641,7 @@ FastMeter::horizontal_expose (cairo_t* cr, cairo_rectangle_t* area)
 	GdkRectangle eventarea;
 
 	Gtkmm2ext::set_source_rgba (cr, outline_color);
-	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 2);
+	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, CairoWidget::flat_buttons() ? 1 : 2);
 	cairo_stroke (cr);
 
 	right_of_meter = (gint) floor (pixwidth * current_level);

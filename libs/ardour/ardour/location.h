@@ -267,6 +267,7 @@ public:
 	 * @return New location object
 	 */
 	Location* add_range (timepos_t const & start, timepos_t const & end);
+	Location* add_section (timepos_t const & start, timepos_t const & end, std::string const & name);
 
 	void remove (Location *);
 	bool clear ();

@@ -17,23 +17,38 @@
  */
 #pragma once
 
+#include <map>
+#include <set>
 #include <string>
+#include <cstdint>
+
+#include "pbd/id.h"
 
 namespace ARDOUR {
 	class Session;
 }
 
-namespace CopilotContext {
+class CopilotUndoRecord {
+public:
+	CopilotUndoRecord ();
 
-/* Build a concise text snapshot of the current session state
- * suitable for inclusion in an LLM context window.
- * Returns empty string if session is NULL.
- */
-std::string build_snapshot (ARDOUR::Session* session);
+	/** Capture controllable values, route IDs, and undo depth before execution */
+	void snapshot (ARDOUR::Session*);
 
-/* Build a catalog of all installed plugins (name, type, role, URI)
- * from PluginManager, suitable for inclusion in LLM context.
- */
-std::string build_plugin_catalog ();
+	/** Revert to captured state: undo native entries, restore controllable values, remove added routes */
+	bool restore (ARDOUR::Session*);
 
-}
+	bool valid () const { return _valid; }
+	void clear ();
+
+	uint32_t undo_depth_before () const { return _undo_depth_before; }
+
+	std::string description;
+	uint32_t    native_undo_count;
+
+private:
+	bool _valid;
+	std::map<PBD::ID, double> _ctrl_map;
+	std::set<PBD::ID>         _route_ids;
+	uint32_t                  _undo_depth_before;
+};

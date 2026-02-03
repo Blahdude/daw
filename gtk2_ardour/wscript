@@ -45,6 +45,7 @@ gtk2_ardour_sources = [
         'copilot_api.cc',
         'copilot_context.cc',
         'copilot_executor.cc',
+        'copilot_undo_record.cc',
         'copilot_window.cc',
         'audio_clip_editor.cc',
         'audio_region_editor.cc',

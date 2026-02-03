@@ -354,7 +354,7 @@ meter_render_ticks (Gtk::Widget& w, MeterType type, vector<ARDOUR::DataType> typ
 		if (types.size() > 1 && (*i) == DataType::MIDI) {
 			/* we're overlaying more than 1 set of marks, so use different colours */
 			c = w.get_style()->get_fg (Gtk::STATE_ACTIVE);
-		} else if (background) {
+		} else if (background || CairoWidget::flat_buttons()) {
 			set_fg_color(w, type, &c);
 		} else {
 			c = w.get_style()->get_fg (Gtk::STATE_NORMAL);
@@ -692,7 +692,7 @@ meter_render_metrics (Gtk::Widget& w, MeterType type, vector<DataType> types)
 		if (types.size() > 1 && (*i) == DataType::MIDI) {
 			/* we're overlaying more than 1 set of marks, so use different colours */
 			c = w.get_style()->get_fg (Gtk::STATE_ACTIVE);
-		} else if (background) {
+		} else if (background || CairoWidget::flat_buttons()) {
 			set_fg_color(w, type, &c);
 		} else {
 			c = w.get_style()->get_fg (Gtk::STATE_NORMAL);

@@ -142,7 +142,7 @@ EditorSummary::render_background_image ()
 
 	/* background (really just the dividing lines between tracks */
 
-	cairo_set_source_rgb (cr, 0, 0, 0);
+	Gtkmm2ext::set_source_rgba (cr, _bg_color);
 	cairo_rectangle (cr, 0, 0, get_width(), get_height());
 	cairo_fill (cr);
 
@@ -195,7 +195,7 @@ EditorSummary::render_background_image ()
 		/* paint a non-bg colored strip to represent the track itself */
 
 		if (_track_height > 4) {
-			cairo_set_source_rgb (cr, 0.2, 0.2, 0.2);
+			Gtkmm2ext::set_source_rgba (cr, _track_color);
 			cairo_set_line_width (cr, _track_height - 1);
 			cairo_move_to (cr, 0, y + _track_height / 2);
 			cairo_line_to (cr, get_width(), y + _track_height / 2);
@@ -220,7 +220,7 @@ EditorSummary::render_background_image ()
 	/* start and end markers */
 
 	cairo_set_line_width (cr, 1);
-	cairo_set_source_rgb (cr, 1, 1, 0);
+	Gtkmm2ext::set_source_rgba (cr, _marker_color);
 
 	const double p = (_session->current_start_sample() - _start) * _x_scale;
 	cairo_move_to (cr, p, 0);
@@ -313,6 +313,9 @@ void
 EditorSummary::set_colors ()
 {
 	_phead_color = UIConfiguration::instance().color ("play head");
+	_bg_color = UIConfiguration::instance().color ("editor summary background");
+	_track_color = UIConfiguration::instance().color ("editor summary track");
+	_marker_color = UIConfiguration::instance().color ("editor summary marker");
 }
 
 
