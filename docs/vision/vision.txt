@@ -1,0 +1,212 @@
+THE VISION
+==========
+
+What if musicians could describe the tools they need and have them built instantly?
+
+Not generated audio. Not AI stems. Not a chatbot that plays presets.
+Actual compiled, native instruments and effects — synthesizers, compressors,
+distortion units, filters — created from a sentence and ready to use.
+
+That's what we're building. And it doesn't stop at plugins.
+
+
+PHASE 1: TEXT TO VST (NOW)
+==========================
+
+The core product. A musician describes a plugin in plain English, and our
+AI generates real JUCE C++ code, compiles it, fixes its own errors, and
+delivers a working VST3/AU plugin.
+
+This is the foundation everything else is built on. The generation engine —
+the AI pipeline, the prompt engineering, the auto-fix compilation loop —
+is the technology that makes everything after it possible.
+
+The business here is straightforward: musicians pay for the ability to
+create custom instruments and effects without writing code.
+
+This phase proves the model works and builds a user base.
+
+
+PHASE 2: THE AI-NATIVE DAW
+===========================
+
+Once plugin generation is solid and the business is running, we expand
+into the full production environment.
+
+The idea: fork Ardour (a proven, open-source DAW that Harrison already
+turned into the commercial product Mixbus) and build an AI-native layer
+on top of it. The musician gets a full production environment — timeline,
+mixer, recording, plugin hosting — with AI woven into every part of it.
+
+This is NOT another "AI generates a song" tool. Those are everywhere
+(Suno, Soundverse, Mozart AI) and they all produce black-box audio
+that the musician can't learn from, tweak, or own.
+
+This is the opposite. The AI builds the tools. The musician makes the music.
+
+What it looks like in practice:
+
+  - "I need a warm analog compressor for this vocal" — the AI generates
+    a custom compressor plugin, compiled and loaded into your session
+    in seconds.
+
+  - "The low end is muddy" — the AI analyzes the mix, identifies the
+    clashing frequencies, and either adjusts existing processing or
+    builds a custom tool to fix it.
+
+  - "Give me that plugin I made last week but with a longer release" —
+    the AI modifies existing generated plugins on the fly.
+
+  - Natural language control over the entire session. Not replacing the
+    musician's decisions, but eliminating the friction between having
+    an idea and hearing it.
+
+
+WHY NOBODY HAS DONE THIS
+=========================
+
+Everyone in the AI + music space went the same direction: generate audio.
+Suno, Udio, Soundverse, Mozart AI — they all produce finished audio from
+text prompts. This is impressive as a demo but limited as a tool. The
+output is a black box. You can't tweak the synthesis, you can't learn
+from it, you can't build on it.
+
+The DAW incumbents (Logic, Ableton, FL Studio) are adding AI features,
+but they're bolting them onto decades-old architectures. Logic's Session
+Players are the most advanced — AI that plays pre-built instruments. But
+even Logic doesn't generate new instruments. It plays the ones Apple
+already built.
+
+Nobody is generating the tools themselves. That requires two things that
+rarely coexist:
+
+  1. Deep audio/DSP/JUCE engineering knowledge
+  2. A working AI code generation pipeline with auto-fixing compilation
+
+We happen to be building both simultaneously.
+
+
+THE OPEN SOURCE PLAY
+====================
+
+The DAW is open source. The AI is not.
+
+This is the same model as Cursor (open-source VS Code fork, proprietary
+AI backend), Harrison Mixbus (open-source Ardour fork, proprietary DSP
+plugins), and every successful open-core company.
+
+What's open source (GPL, because Ardour is GPL):
+  - The DAW application itself
+  - The UI, timeline, mixer, transport, recording
+  - Any modifications we make to Ardour's codebase
+  - Community contributions flow back into the project
+
+What's proprietary:
+  - The AI generation service (runs on our servers, accessed via API)
+  - The prompt engineering and template intelligence
+  - The auto-fix compilation loop
+  - The plugin generation pipeline
+  - Any custom DSP plugins we ship (separate binaries, don't link GPL code)
+
+The legal line is clean: GPL applies to code compiled into the DAW binary.
+Our AI backend is a separate service the DAW talks to over HTTPS. Generated
+plugins are separate VST3 binaries loaded through standard plugin APIs.
+None of our proprietary technology touches the GPL.
+
+Harrison has operated this exact model with Ardour since 2009.
+
+
+WHY OPEN SOURCE IS AN ADVANTAGE
+================================
+
+Audio developers and musicians are deeply skeptical of closed platforms.
+They've been burned by companies shutting down and taking their tools
+with them. An open-source DAW earns trust that a proprietary product
+never would.
+
+The flywheel:
+  - Open-source DAW attracts developers who contribute improvements
+  - Better DAW attracts more musicians
+  - More musicians means more AI service subscribers
+  - More revenue funds more AI development
+  - Better AI makes the DAW more valuable
+  - Repeat
+
+Someone could fork our DAW, but they'd have to rebuild the entire AI
+backend from scratch. That's the moat — not the code, but the intelligence.
+
+
+WHY ARDOUR
+==========
+
+Ardour is a full, professional-grade DAW. It's been in development for
+over 20 years. It runs on Mac, Windows, and Linux. It supports VST3, AU,
+and LV2 plugins. It handles unlimited tracks, full automation, and
+comprehensive routing.
+
+Harrison took Ardour and built Mixbus — a commercial product that
+professionals use daily. That's proof the codebase can support a
+commercial product.
+
+The alternative would be building a DAW UI from scratch on top of an
+engine like Tracktion Engine. That means designing every button, every
+timeline view, every mixer channel, every track header from zero. Years
+of work before we even get to the AI part.
+
+Ardour gives us a working DAW on day one. We fork it, add the AI layer,
+and ship.
+
+Our JUCE-generated plugins load into Ardour through standard VST3/AU
+interfaces — the same way they'd load into any DAW. The plugin framework
+and the DAW framework don't need to match.
+
+
+THE COMPETITIVE LANDSCAPE
+=========================
+
+AI audio generation (Suno, Soundverse, Mozart AI):
+  They generate audio. We generate tools. Different product, different
+  market, different value proposition. Their output is consumable.
+  Ours is composable.
+
+Legacy DAWs adding AI (Logic, FL Studio, Studio One):
+  They're bolting AI onto existing architectures. Session players,
+  stem splitting, AI assistants that answer questions. None of them
+  generate new instruments or effects. They're making their existing
+  tools slightly smarter, not fundamentally rethinking the workflow.
+
+Browser-based AI DAWs (Soundverse x Veena, Suno Studio):
+  Browser means Web Audio API, which means real latency limitations,
+  no native plugin hosting, no ASIO, no serious DSP performance.
+  Fine for casual use and demos. Not for production.
+
+Open-source DAWs (Ardour, LMMS, openDAW):
+  Great software, no AI integration of any kind. Ardour specifically
+  is our starting point, not our competition.
+
+Harrison Mixbus:
+  The closest precedent to our model. They proved you can build a
+  commercial product on Ardour. But they added analog console modeling,
+  not AI. Different value-add, same structural approach.
+
+Nobody is building an AI-native, open-source, native desktop DAW where
+the AI generates compiled instruments and effects from natural language.
+
+
+THE LONG VIEW
+=============
+
+Phase 1: Text-to-VST product. Prove the AI generation engine works.
+         Build revenue and user base.
+
+Phase 2: Fork Ardour. Integrate AI generation into a full DAW.
+         Open source the DAW, proprietary AI service.
+
+Phase 3: AI as co-producer. The AI doesn't just respond to commands —
+         it understands the session, hears the mix, and has opinions.
+         "This bridge isn't working" and it can suggest structural
+         changes, generate the tools to implement them, and adjust
+         the processing.
+
+The end state: the production environment where the gap between
+having an idea and hearing it is zero.

@@ -113,6 +113,7 @@
 #include "location_ui.h"
 #include "lua_script_manager.h"
 #include "luawindow.h"
+#include "copilot_window.h"
 #include "plugin_dspload_window.h"
 #include "plugin_manager_ui.h"
 #include "rc_option_editor.h"
@@ -172,6 +173,7 @@ class TimeInfoBox;
 class ApplicationBar;
 class Meterbridge;
 class LuaWindow;
+class CopilotWindow;
 class MidiTracer;
 class PianorollWindow;
 class NSM_Client;
@@ -292,6 +294,7 @@ public:
 	void toggle_keep_tearoffs();
 	void show_plugin_manager();
 	void show_lua_window();
+	void show_copilot_window();
 	void show_realtime_analyzer();
 
 	void reset_focus (Gtk::Widget*);
@@ -715,6 +718,7 @@ private:
 	WM::ProxyWithConstructor<GlobalPortMatrixWindow> midi_port_matrix;
 	WM::ProxyWithConstructor<KeyEditor> key_editor;
 	WM::ProxyWithConstructor<LuaWindow> luawindow;
+	WM::ProxyWithConstructor<CopilotWindow> copilot_window;
 	WM::ProxyWithConstructor<RTAWindow> rtawindow;
 
 	/* creator methods */
@@ -729,6 +733,7 @@ private:
 	GlobalPortMatrixWindow* create_global_port_matrix (ARDOUR::DataType);
 	KeyEditor*              create_key_editor ();
 	LuaWindow*              create_luawindow ();
+	CopilotWindow*          create_copilot_window ();
 	RTAWindow*              create_rtawindow ();
 
 	ARDOUR::SystemExec *video_server_process;

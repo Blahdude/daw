@@ -67,6 +67,7 @@
 #include "location_ui.h"
 #include "lua_script_manager.h"
 #include "luawindow.h"
+#include "copilot_window.h"
 #include "main_clock.h"
 #include "meterbridge.h"
 #include "meter_patterns.h"
@@ -993,6 +994,13 @@ ARDOUR_UI::create_luawindow ()
 	return luawindow;
 }
 
+CopilotWindow*
+ARDOUR_UI::create_copilot_window ()
+{
+	CopilotWindow* cw = CopilotWindow::instance ();
+	return cw;
+}
+
 RTAWindow*
 ARDOUR_UI::create_rtawindow ()
 {
@@ -1081,6 +1089,13 @@ void
 ARDOUR_UI::show_lua_window ()
 {
 	Glib::RefPtr<ToggleAction> tact = ActionManager::get_toggle_action ("Window", "toggle-luawindow");
+	tact->set_active();
+}
+
+void
+ARDOUR_UI::show_copilot_window ()
+{
+	Glib::RefPtr<ToggleAction> tact = ActionManager::get_toggle_action ("Window", "toggle-copilot-window");
 	tact->set_active();
 }
 

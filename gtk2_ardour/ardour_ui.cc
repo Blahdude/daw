@@ -157,6 +157,7 @@
 #include "location_ui.h"
 #include "lua_script_manager.h"
 #include "luawindow.h"
+#include "copilot_window.h"
 #include "main_clock.h"
 #include "missing_plugin_dialog.h"
 #include "mixer_ui.h"
@@ -332,6 +333,7 @@ ARDOUR_UI::ARDOUR_UI (int *argcp, char **argvp[], const char* localedir)
 	, midi_port_matrix (X_("midi-connection-manager"), _("MIDI Connections"), std::bind (&ARDOUR_UI::create_global_port_matrix, this, ARDOUR::DataType::MIDI))
 	, key_editor (X_("key-editor"), _("Keyboard Shortcuts"), std::bind (&ARDOUR_UI::create_key_editor, this))
 	, luawindow (X_("luawindow"), S_("Window|Scripting"), std::bind (&ARDOUR_UI::create_luawindow, this))
+	, copilot_window (X_("copilot-window"), S_("Window|AI Copilot"), std::bind (&ARDOUR_UI::create_copilot_window, this))
 	, rtawindow (X_("rtawindow"), S_("Window|Realtime Analyzer"), std::bind (&ARDOUR_UI::create_rtawindow, this))
 	, video_server_process (0)
 	, have_configure_timeout (false)
@@ -496,6 +498,7 @@ ARDOUR_UI::ARDOUR_UI (int *argcp, char **argvp[], const char* localedir)
 		audio_port_matrix.set_state (*ui_xml, 0);
 		midi_port_matrix.set_state (*ui_xml, 0);
 		luawindow.set_state (*ui_xml, 0);
+		copilot_window.set_state (*ui_xml, 0);
 		rtawindow.set_state (*ui_xml, 0);
 		export_video_dialog.set_state (*ui_xml, 0);
 		lua_script_window.set_state (*ui_xml, 0);
@@ -531,6 +534,7 @@ ARDOUR_UI::ARDOUR_UI (int *argcp, char **argvp[], const char* localedir)
 	WM::Manager::instance().register_window (&audio_port_matrix);
 	WM::Manager::instance().register_window (&midi_port_matrix);
 	WM::Manager::instance().register_window (&luawindow);
+	WM::Manager::instance().register_window (&copilot_window);
 	WM::Manager::instance().register_window (&rtawindow);
 	WM::Manager::instance().register_window (&idleometer);
 	WM::Manager::instance().register_window (&io_plugin_window);

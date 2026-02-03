@@ -1,0 +1,250 @@
+V1 MVP: AI-CONTROLLED DAW
+=========================
+
+The first version is not about generating plugins.
+It's about proving that AI can control a DAW through natural language.
+
+
+WHAT IT IS
+==========
+
+A fork of Ardour where Claude is wired in as an AI co-pilot that can
+execute real actions inside the DAW. The musician talks to it in plain
+English, and it does things. Not suggestions. Not tooltips. Actual
+changes to the session.
+
+"Add a reverb to the vocals" — reverb appears on the vocal track.
+"Turn the bass up 3dB" — fader moves.
+"Mute the drums" — drums go silent.
+"Delete track 4" — gone.
+
+That's the MVP. A working DAW with an AI that can operate it.
+
+
+WHY THIS COMES FIRST
+=====================
+
+Before we build AI that generates custom plugins (Phase 2), we need
+AI that understands how a DAW session works. What tracks exist, what
+plugins are loaded, what the signal chain looks like, what the levels
+are. If Claude can't navigate and control a session, it definitely
+can't make intelligent decisions about what to build for one.
+
+This is also the fastest path to something people can use and react to.
+Plugin generation is complex (compile loops, error fixing, C++ code
+generation). DAW control is a thinner integration — we're connecting
+Claude to actions Ardour can already perform.
+
+And frankly, this alone is a product. No DAW has an AI that can
+actually operate it. Logic's AI plays instruments. FL Studio's AI
+answers questions about the manual. Nobody has an AI that sits at
+the mixing desk and does what you ask.
+
+
+WHAT CLAUDE CAN DO IN V1
+=========================
+
+Track management:
+  - Create new audio or MIDI tracks
+  - Delete tracks
+  - Rename tracks
+  - Reorder tracks
+
+Mixing:
+  - Adjust volume on any track
+  - Adjust panning
+  - Mute / solo / arm tracks
+
+Plugin management:
+  - Add plugins to tracks (from installed plugins on the system)
+  - Remove plugins from tracks
+  - Adjust plugin parameters ("make the reverb wetter",
+    "increase the attack on the compressor")
+
+Transport:
+  - Play / stop / record
+  - Set loop regions
+  - Navigate to specific points in the timeline
+
+Session awareness:
+  - Claude knows what tracks exist
+  - Claude knows what plugins are loaded and their current settings
+  - Claude can describe the current state of the session
+  - "What's on track 3?" — "Track 3 is an audio track called Vocals
+    with a compressor and a plate reverb. Volume is at -2.4dB,
+    panned center."
+
+These are all things Ardour already does. We're not adding new DAW
+features. We're making existing features accessible through
+conversation.
+
+
+THE USER EXPERIENCE
+===================
+
+The musician opens the DAW. It looks and works like a normal DAW —
+because it is one. Timeline, mixer, tracks, plugins, transport.
+Everything a producer expects.
+
+But there's a text input. Maybe a side panel. Maybe a floating window.
+The musician types (or eventually speaks) what they want.
+
+It's not a chatbot that gives advice. It's a co-engineer that
+executes. The distinction matters. "How do I add reverb?" is a
+chatbot. "Add reverb" is a co-engineer.
+
+The AI should feel like talking to an experienced assistant engineer
+who's sitting at the console next to you. You say "can you pull up
+the bass a bit" and they reach over and do it. You don't explain
+which fader or by how many dB unless you want to.
+
+When Claude is unsure, it asks. "Add reverb" — "Which track? And do
+you want a plate, hall, or room reverb?" That's natural. That's how
+a real assistant engineer works.
+
+
+WHO THIS IS FOR
+===============
+
+V1 is for:
+  - Producers who know what they want but are tired of clicking
+    through menus
+  - Musicians who think in terms of sound, not in terms of UI
+  - Beginners who know what "add reverb" means but not where
+    the button is
+  - Anyone who's ever wished they could just tell their DAW
+    what to do
+
+V1 is not yet for:
+  - People who want AI-generated music (that's not what this is)
+  - People who want custom AI-generated plugins (that's Phase 2)
+  - People who need the absolute lowest latency for live performance
+    (we'll get there, but MVP focuses on studio workflow)
+
+
+WHAT SUCCESS LOOKS LIKE
+========================
+
+The demo that sells this:
+
+Someone opens the DAW with a few tracks recorded. They type:
+
+  "Add a compressor to the vocals, gentle 2:1 ratio"
+  "Put a plate reverb on the snare, keep it subtle"
+  "The bass is too loud, pull it back about 2dB"
+  "Solo the guitar for a second"
+  "OK unsolo it. Pan the keys slightly right"
+  "Mute everything except drums and bass"
+
+And all of it just happens. In real time. In a real DAW.
+
+That video goes viral. Nobody has seen this before.
+
+
+WHAT THIS IS NOT
+================
+
+This is not a toy. It's built on Ardour — a real DAW used in real
+studios. It hosts real VST3/AU plugins. It records real audio. It
+exports real mixes. We're not building a demo that only works for
+simple cases.
+
+This is not a replacement for manual control. Every fader, knob,
+and button still works exactly as expected. The AI is an additional
+input method, not a replacement. Musicians who want to click and
+drag still can. The AI is there for when talking is faster.
+
+This is not AI making creative decisions for you. Claude executes
+what you ask. It can offer suggestions if you ask for them ("what
+would help this mix?") but it doesn't change things on its own.
+The musician stays in control.
+
+
+HOW THIS BECOMES A BUSINESS
+============================
+
+The DAW is free and open source (GPL, because Ardour is GPL).
+Anyone can download it and use it as a fully functional DAW.
+
+The AI features require a subscription. Claude runs on our servers.
+The DAW sends your request to our API, Claude figures out the
+action, sends the command back, and the DAW executes it. Your
+audio never leaves your machine — only the text of your requests
+and session metadata (track names, plugin lists, parameter values).
+
+Free tier: limited number of AI commands per month. Enough to
+try it and see the value.
+
+Paid tier: unlimited AI commands. This is the product.
+
+The cost structure scales naturally. Each request is an API call.
+More users, more revenue, and the compute cost is small relative
+to what people pay for DAW software and plugins today.
+
+
+THE COMPETITIVE MOAT
+====================
+
+Once V1 works, we have something nobody else has: an AI that
+understands DAW sessions at the operational level. Not as a
+concept, but as a working integration.
+
+That understanding — how to translate "make the reverb wetter"
+into the specific plugin parameter change on the specific track —
+is the intelligence layer that compounds over time. Every user
+interaction makes the system smarter about how musicians think
+and what they mean.
+
+And it sets up Phase 2 perfectly. If Claude already understands
+your session — what tracks you have, what plugins you're using,
+what your signal chain looks like — then it can start making
+intelligent suggestions about what custom tools to build. "You're
+using three different EQs to tame the same frequency range. Want
+me to build you a single plugin that handles all of that?"
+
+That's when text-to-VST generation enters the DAW. Not as a
+standalone product, but as a natural extension of an AI that
+already knows your session intimately.
+
+
+FROM V1 TO THE FULL VISION
+===========================
+
+V1: Claude controls the DAW. Mixing, track management, plugin
+    management through natural language.
+
+V2: Claude generates plugins. Custom instruments and effects
+    built on demand, compiled and loaded into the session.
+
+V3: Claude as co-producer. Full session awareness, creative
+    suggestions, generates tools to solve problems it identifies.
+
+Each phase builds on the last. You can't do V2 well without the
+session awareness from V1. You can't do V3 without the generation
+capability from V2. The sequence matters.
+
+
+FIRST STEPS
+============
+
+1. Clone and build Ardour from source. Get it compiling and running.
+
+2. Understand how Ardour exposes control — OSC, Lua scripting, or
+   direct source modification. Figure out the thinnest possible
+   bridge between an external AI service and Ardour's internals.
+
+3. Build the bridge. Get Claude able to execute one single action
+   in Ardour — even if it's just changing a fader level. That's the
+   proof of concept.
+
+4. Expand the action vocabulary. Track management, plugin management,
+   mixing controls, transport. One at a time.
+
+5. Build the text input UI inside Ardour. Minimal — just a way to
+   type and see responses.
+
+6. Polish the conversational layer. Claude should understand
+   informal language ("crank the bass", "kill the reverb",
+   "make it brighter") not just formal commands.
+
+7. Ship it. Free DAW, paid AI tier. See how people react.

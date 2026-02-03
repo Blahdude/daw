@@ -752,6 +752,7 @@
 #endif
 
       <separator/><!-- Misc Configuration !-->
+      <menuitem action='toggle-copilot-window'/>
       <menuitem action='toggle-luawindow'/>
       <menuitem action='ManageTemplates'/>
       <menuitem action='toggle-transport-masters'/>
