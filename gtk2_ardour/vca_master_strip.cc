@@ -95,7 +95,7 @@ VCAMasterStrip::VCAMasterStrip (Session* s, std::shared_ptr<VCA> v)
 
 	hide_button.signal_clicked.connect (sigc::mem_fun(*this, &VCAMasterStrip::hide_clicked));
 
-	solo_mute_box.set_spacing (2);
+	solo_mute_box.set_spacing (CairoWidget::flat_buttons() ? 4 : 2);
 	solo_mute_box.pack_start (mute_button, true, true);
 	solo_mute_box.pack_start (solo_button, true, true);
 
@@ -124,7 +124,7 @@ VCAMasterStrip::VCAMasterStrip (Session* s, std::shared_ptr<VCA> v)
 	set_tooltip (vertical_button, _("Click to show assigned channels only")); /* tooltip updated dynamically */
 
 	global_vpacker.set_border_width (0);
-	global_vpacker.set_spacing (0);
+	global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 5 : 0);
 	gain_meter.set_spacing(4);
 
 	global_vpacker.pack_start (number_label, false, false, 1);
@@ -137,7 +137,6 @@ VCAMasterStrip::VCAMasterStrip (Session* s, std::shared_ptr<VCA> v)
 	global_vpacker.pack_start (bottom_padding, false, false, 0);
 
 	global_frame.add (global_vpacker);
-	global_frame.set_shadow_type (Gtk::SHADOW_IN);
 	global_frame.set_name ("BaseFrame");
 
 	add (global_frame);
@@ -327,11 +326,11 @@ VCAMasterStrip::set_selected (bool yn)
 	AxisView::set_selected (yn);
 
 	if (_selected) {
-		global_frame.set_shadow_type (Gtk::SHADOW_ETCHED_OUT);
 		global_frame.set_name ("MixerStripSelectedFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("selected strip edge"));
 	} else {
-		global_frame.set_shadow_type (Gtk::SHADOW_IN);
 		global_frame.set_name ("MixerStripFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("strip frame edge"));
 	}
 
 	global_frame.queue_draw ();

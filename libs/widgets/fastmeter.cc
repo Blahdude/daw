@@ -211,45 +211,47 @@ FastMeter::generate_meter_pattern (
 	                                  r/255.0, g/255.0, b/255.0);
 
 	if ((styleflags & 1) && !no_rgba_overlay) {
-		cairo_pattern_t* shade_pattern = cairo_pattern_create_linear (0.0, 0.0, width, 0.0);
-		const double si = CairoWidget::flat_buttons() ? 0.5 : 1.0;
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 0,   0.0, 0.0, 0.0, 0.15 * si);
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 0.4, 1.0, 1.0, 1.0, 0.05 * si);
-		cairo_pattern_add_color_stop_rgba (shade_pattern, 1,   0.0, 0.0, 0.0, 0.25 * si);
+		if (CairoWidget::flat_buttons()) {
+			/* flat: skip horizontal shade gradient and LED stripes — clean flat color only */
+		} else {
+			cairo_pattern_t* shade_pattern = cairo_pattern_create_linear (0.0, 0.0, width, 0.0);
+			cairo_pattern_add_color_stop_rgba (shade_pattern, 0,   0.0, 0.0, 0.0, 0.15);
+			cairo_pattern_add_color_stop_rgba (shade_pattern, 0.4, 1.0, 1.0, 1.0, 0.05);
+			cairo_pattern_add_color_stop_rgba (shade_pattern, 1,   0.0, 0.0, 0.0, 0.25);
 
-		cairo_surface_t* surface;
-		cairo_t* tc = 0;
-		surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
-		tc = cairo_create (surface);
-		cairo_set_source (tc, pat);
-		cairo_rectangle (tc, 0, 0, width, height);
-		cairo_fill (tc);
-		cairo_pattern_destroy (pat);
+			cairo_surface_t* surface;
+			cairo_t* tc = 0;
+			surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, width, height);
+			tc = cairo_create (surface);
+			cairo_set_source (tc, pat);
+			cairo_rectangle (tc, 0, 0, width, height);
+			cairo_fill (tc);
+			cairo_pattern_destroy (pat);
 
-		cairo_set_source (tc, shade_pattern);
-		cairo_rectangle (tc, 0, 0, width, height);
-		cairo_fill (tc);
-		cairo_pattern_destroy (shade_pattern);
+			cairo_set_source (tc, shade_pattern);
+			cairo_rectangle (tc, 0, 0, width, height);
+			cairo_fill (tc);
+			cairo_pattern_destroy (shade_pattern);
 
-		if (styleflags & 2) { // LED stripes
-			cairo_save (tc);
-			cairo_set_line_width(tc, 1.0);
-			cairo_set_source_rgba(tc, .0, .0, .0, 0.4);
-			//cairo_set_operator (tc, CAIRO_OPERATOR_SOURCE);
-			for (int i = 0; float y = 0.5 + i * 2.0; ++i) {
-				if (y >= height) {
-					break;
+			if (styleflags & 2) { // LED stripes
+				cairo_save (tc);
+				cairo_set_line_width(tc, 1.0);
+				cairo_set_source_rgba(tc, .0, .0, .0, 0.4);
+				for (int i = 0; float y = 0.5 + i * 2.0; ++i) {
+					if (y >= height) {
+						break;
+					}
+					cairo_move_to(tc, 0, y);
+					cairo_line_to(tc, width, y);
+					cairo_stroke (tc);
 				}
-				cairo_move_to(tc, 0, y);
-				cairo_line_to(tc, width, y);
-				cairo_stroke (tc);
+				cairo_restore (tc);
 			}
-			cairo_restore (tc);
-		}
 
-		pat = cairo_pattern_create_for_surface (surface);
-		cairo_destroy (tc);
-		cairo_surface_destroy (surface);
+			pat = cairo_pattern_create_for_surface (surface);
+			cairo_destroy (tc);
+			cairo_surface_destroy (surface);
+		}
 	}
 
 	if (horiz) {
@@ -567,9 +569,17 @@ FastMeter::vertical_expose (cairo_t* cr, cairo_rectangle_t* area)
 	GdkRectangle background;
 	GdkRectangle eventarea;
 
-	Gtkmm2ext::set_source_rgba (cr, outline_color);
-	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, CairoWidget::flat_buttons() ? 1 : 2);
-	cairo_stroke (cr);
+	if (CairoWidget::flat_buttons()) {
+		/* flat: minimal outline */
+		Gtkmm2ext::set_source_rgba (cr, outline_color);
+		rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 0);
+		cairo_set_line_width (cr, 0.5);
+		cairo_stroke (cr);
+	} else {
+		Gtkmm2ext::set_source_rgba (cr, outline_color);
+		rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 2);
+		cairo_stroke (cr);
+	}
 
 	top_of_meter = (gint) floor (pixheight * current_level);
 
@@ -608,10 +618,13 @@ FastMeter::vertical_expose (cairo_t* cr, cairo_rectangle_t* area)
 		last_peak_rect.x = 1;
 		last_peak_rect.width = pixwidth;
 		last_peak_rect.y = max(1, 1 + pixheight - (int) floor (pixheight * current_peak));
-		if (_styleflags & 2) { // LED stripes
+		if (!CairoWidget::flat_buttons() && (_styleflags & 2)) { // LED stripes (non-flat only)
 			last_peak_rect.y = max(0, (last_peak_rect.y & (~1)));
 		}
-		if (bright_hold || (_styleflags & 2)) {
+		if (CairoWidget::flat_buttons()) {
+			/* flat: thin 1px peak indicator, no bright_hold overlay */
+			last_peak_rect.height = max(0, min(1, pixheight - last_peak_rect.y - 1 ));
+		} else if (bright_hold || (_styleflags & 2)) {
 			last_peak_rect.height = max(0, min(3, pixheight - last_peak_rect.y - 1 ));
 		} else {
 			last_peak_rect.height = max(0, min(2, pixheight - last_peak_rect.y - 1 ));
@@ -620,7 +633,7 @@ FastMeter::vertical_expose (cairo_t* cr, cairo_rectangle_t* area)
 		cairo_set_source (cr, fgpattern->cobj());
 		cairo_rectangle (cr, last_peak_rect.x, last_peak_rect.y, last_peak_rect.width, last_peak_rect.height);
 
-		if (bright_hold && !no_rgba_overlay) {
+		if (!CairoWidget::flat_buttons() && bright_hold && !no_rgba_overlay) {
 			cairo_fill_preserve (cr);
 			cairo_set_source_rgba (cr, 1.0, 1.0, 1.0, 0.3);
 		}
@@ -640,9 +653,16 @@ FastMeter::horizontal_expose (cairo_t* cr, cairo_rectangle_t* area)
 	GdkRectangle background;
 	GdkRectangle eventarea;
 
-	Gtkmm2ext::set_source_rgba (cr, outline_color);
-	rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, CairoWidget::flat_buttons() ? 1 : 2);
-	cairo_stroke (cr);
+	if (CairoWidget::flat_buttons()) {
+		Gtkmm2ext::set_source_rgba (cr, outline_color);
+		rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 0);
+		cairo_set_line_width (cr, 0.5);
+		cairo_stroke (cr);
+	} else {
+		Gtkmm2ext::set_source_rgba (cr, outline_color);
+		rounded_rectangle (cr, 0, 0, pixwidth + 2, pixheight + 2, 2);
+		cairo_stroke (cr);
+	}
 
 	right_of_meter = (gint) floor (pixwidth * current_level);
 

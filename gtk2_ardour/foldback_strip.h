@@ -26,7 +26,7 @@
 #include <ytkmm/box.h>
 #include <ytkmm/button.h>
 #include <ytkmm/eventbox.h>
-#include <ytkmm/frame.h>
+#include "widgets/frame.h"
 #include <ytkmm/label.h>
 #include <ytkmm/menu.h>
 #include <ytkmm/scrolledwindow.h>
@@ -190,7 +190,7 @@ private:
 	Gtk::EventBox       _spacer;
 	Gtk::VBox           _send_display;
 	Gtk::ScrolledWindow _send_scroller;
-	Gtk::Frame          _global_frame;
+	ArdourWidgets::Frame _global_frame;
 	Gtk::VBox           _global_vpacker;
 	Gtk::HBox           _prev_next_box;
 	Gtk::HBox           _level_box;

@@ -1,0 +1,121 @@
+ARDOUR MODERN UI VISION
+=======================
+
+The most approachable DAW in existence.
+AI-first. Zero friction. Full power underneath.
+
+
+WHO WE ARE BUILDING FOR
+------------------------
+
+Someone with a musical idea and no engineering degree. They don't know
+what a compressor ratio is. They don't want to learn signal routing.
+They want to make music and have it sound good.
+
+They've maybe used GarageBand. Maybe BandLab. Maybe nothing at all.
+They opened our app because it's free, it's open source, and someone
+told them it was good. Within thirty seconds they will decide if this
+is for them or not.
+
+We are not building for the person who loves tweaking compressor
+knee curves. That person is welcome — everything they need is one
+toggle away — but they are not who we design the default experience for.
+
+
+WHAT WE BELIEVE
+----------------
+
+The best interface is the one you don't have to learn.
+
+Every visible control that a new user doesn't understand is friction.
+Every button they're afraid to click is friction. Every panel that
+makes them think "this isn't for me" is friction. We eliminate
+friction ruthlessly.
+
+No functionality is removed. Not a single routing option, plugin
+parameter, automation lane, or MIDI feature. We are changing what is
+VISIBLE BY DEFAULT. The full Ardour — every knob and wire — is one
+toggle away for anyone who wants it.
+
+If the AI can do it, we don't need a visible control for it. The user
+says "add reverb to the vocals" — they never need to see a plugin
+browser. The user says "make the drums quieter in the chorus" — they
+never need to find an automation lane. The AI is the interface. The
+visual UI is feedback.
+
+
+THE DEFAULT EXPERIENCE
+-----------------------
+
+When you open this app for the first time, you see:
+
+  - Your tracks, with names and colors
+  - A volume fader and meter for each one
+  - Mute, Solo, Record — three buttons you already understand
+  - Play, Stop, Record — transport you already understand
+  - An AI bar that says: "Ask me anything"
+
+That's it. No plugin slots. No routing matrix. No send buses. No pan
+knobs. No automation lanes. No MIDI channel selectors. No monitor
+section. Not because those things don't exist — they all do — but
+because you don't need to see them to make music.
+
+The AI bar is the most prominent element on screen. It is the answer
+to every question of "how do I...?" You type what you want. It happens.
+You hear the result. If you don't like it, you say so.
+
+
+THE FULL EXPERIENCE
+--------------------
+
+One toggle. Simple to Full. Instant. Non-destructive.
+
+The full mixer appears: every plugin slot, every send, every pan
+control, every routing option. The same session, the same sound,
+just more visible controls. For the user who has grown, who wants
+direct manipulation, who came from Logic or Pro Tools and wants to
+see everything.
+
+The two modes share the same session. Nothing is lost switching
+between them. A session built entirely through AI commands in Simple
+Mode is a complete Ardour session with real plugins, real automation,
+real routing. Open it in Full Mode and it's all there.
+
+
+THE VISUAL LANGUAGE
+--------------------
+
+Flat. Warm. Quiet.
+
+No bevels, no 3D shadows, no raised buttons, no LED indicators.
+Every surface is a flat colored rectangle. Depth comes from color
+value alone — lighter means closer, darker means further.
+
+The palette is warm dark grays. Not clinical, not cold. The interface
+feels like a well-designed room at night — comfortable, focused,
+calm. When nothing is active, the screen is nearly monochrome.
+Active states — record, solo, mute — fill their buttons with color.
+That's the only thing that demands your attention.
+
+Generous spacing everywhere. Elements breathe. Nothing feels cramped.
+The UI communicates confidence through emptiness: we don't need to
+fill every pixel to prove we're powerful.
+
+One design system. Transport buttons follow the same rules as mixer
+buttons follow the same rules as editor buttons. No special cases.
+
+
+WHAT THIS IS NOT
+-----------------
+
+This is not a toy. The AI layer means a user in Simple Mode can
+accomplish things that would require years of training in a traditional
+DAW. The ceiling is as high as Ardour's engine allows. The floor is
+as low as "press record and sing."
+
+This is not a dumbed-down fork. Every session is a full Ardour session.
+Every feature exists. We are curating visibility, not capability.
+
+This is not competing with Pro Tools on control density. We are
+competing on the feeling you get when you open the app. The feeling
+should be: I can do this.

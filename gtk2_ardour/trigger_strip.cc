@@ -133,7 +133,8 @@ TriggerStrip::init ()
 	_name_button.signal_size_allocate ().connect (sigc::mem_fun (*this, &TriggerStrip::name_button_resized));
 
 	/* strip layout */
-	global_vpacker.set_spacing (2);
+	global_vpacker.set_border_width (0);
+	global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 5 : 2);
 	global_vpacker.pack_start (input_button, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (_name_button, Gtk::PACK_SHRINK);
 
@@ -157,7 +158,7 @@ TriggerStrip::init ()
 
 	/* Mute & Solo */
 	mute_solo_table.set_homogeneous (true);
-	mute_solo_table.set_spacings (2);
+	mute_solo_table.set_spacings (CairoWidget::flat_buttons() ? 4 : 2);
 	mute_solo_table.attach (*mute_button, 0, 1, 0, 1);
 	mute_solo_table.attach (*solo_button, 1, 2, 0, 1);
 
@@ -166,8 +167,8 @@ TriggerStrip::init ()
 
 	/* top-level */
 	global_frame.add (global_vpacker);
-	global_frame.set_shadow_type (Gtk::SHADOW_IN);
 	global_frame.set_name ("BaseFrame");
+	global_frame.set_edge_color (UIConfiguration::instance().color ("strip frame edge"));
 
 	add (global_frame);
 
@@ -477,11 +478,11 @@ TriggerStrip::set_selected (bool yn)
 	AxisView::set_selected (yn);
 
 	if (selected()) {
-		global_frame.set_shadow_type (Gtk::SHADOW_ETCHED_OUT);
 		global_frame.set_name ("MixerStripSelectedFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("selected strip edge"));
 	} else {
-		global_frame.set_shadow_type (Gtk::SHADOW_IN);
 		global_frame.set_name ("MixerStripFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("strip frame edge"));
 	}
 
 	global_frame.queue_draw ();

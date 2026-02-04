@@ -34,7 +34,7 @@
 #include <ytkmm/button.h>
 #include <ytkmm/box.h>
 #include <ytkmm/eventbox.h>
-#include <ytkmm/frame.h>
+#include "widgets/frame.h"
 #include <ytkmm/label.h>
 #include <ytkmm/menu.h>
 #include <ytkmm/sizegroup.h>
@@ -185,10 +185,16 @@ private:
 	Gtk::HBox                   width_hide_box;
 	Gtk::EventBox               spacer;
 
+	/* Section separators for modern/flat theme */
+	Gtk::EventBox               _section_sep1;
+	Gtk::EventBox               _section_sep2;
+	Gtk::EventBox               _section_sep3;
+	Gtk::EventBox               _section_sep4;
+
 	void hide_clicked();
 	bool width_button_pressed (GdkEventButton *);
 
-	Gtk::Frame          global_frame;
+	ArdourWidgets::Frame global_frame;
 	Gtk::VBox           global_vpacker;
 
 	ProcessorBox processor_box;

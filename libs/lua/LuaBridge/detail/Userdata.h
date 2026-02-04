@@ -668,7 +668,18 @@ public:
   {
     if constexpr (passByValueNotEnum) {
 
-      return *Userdata::get <T> (L, index, true);
+      T* p = Userdata::get <T> (L, index, true);
+      if (!p) {
+        if constexpr (std::is_default_constructible_v<T>) {
+          static const T default_val = T ();
+          return default_val;
+        } else {
+          luaL_error (L, "nil passed where a value is required");
+          // luaL_error does longjmp and never returns
+          return *reinterpret_cast<T const*> (1);
+        }
+      }
+      return *p;
 
     } else if constexpr (passByValueEnum) {
 
@@ -676,6 +687,10 @@ public:
       return T (v);
 
     } else {
+
+      if (lua_isnil (L, index)) {
+        return T (); // default-constructed empty container (e.g. empty shared_ptr)
+      }
 
       typedef typename TypeTraits::removeConst <
        typename ContainerTraits <T>::Type>::Type U;

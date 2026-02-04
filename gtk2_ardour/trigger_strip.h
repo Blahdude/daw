@@ -21,7 +21,7 @@
 
 #include <ytkmm/box.h>
 #include <ytkmm/eventbox.h>
-#include <ytkmm/frame.h>
+#include "widgets/frame.h"
 
 #include "pbd/stateful.h"
 
@@ -119,7 +119,7 @@ private:
 	PBD::ScopedConnection _panstate_connection;
 
 	/* Layout */
-	Gtk::Frame global_frame;
+	ArdourWidgets::Frame global_frame;
 	Gtk::VBox  global_vpacker;
 	Gtk::Table mute_solo_table;
 	Gtk::Table volume_table;

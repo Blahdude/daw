@@ -58,7 +58,7 @@ style "default" = "medium_text"
   GtkScrollbar        :: arrow-scaling                    = 0.4               # [             0.5 ] ( 0.1  ) The arrow size proportion relative to the scroll button size.
   GtkScrollbar        :: fixed-slider-length              = 0                 # [               0 ] ( bool ) Don't change slider size, just lock it to the minimum length.
   GtkScrollbar        :: min-slider-length                = 30                # [              21 ] ( >= 0 ) Minimum length of scrollbar slider.
-  GtkScrollbar        :: slider-width                     = 6                 # [              14 ] ( >= 0 ) Width of scrollbar or scale thumb.
+  GtkScrollbar        :: slider-width                     = 8                 # [              14 ] ( >= 0 ) Width of scrollbar or scale thumb.
   GtkScrollbar        :: stepper-spacing                  = 0                 # [               0 ] ( >= 0 ) The spacing between the stepper buttons and thumb. Note that setting this value to anything > 0 will automatically set the trough-under-steppers style property to TRUE as well. Also, stepper-spacing won't have any effect if there are no steppers.
   GtkScrollbar        :: trough-border                    = 0                 # [               1 ] ( >= 0 ) Spacing between thumb/steppers and outer trough bevel.
   GtkScrollbar        :: focus-line-width                 = 0
@@ -99,8 +99,8 @@ style "default" = "medium_text"
   GtkArrow            :: arrow-scaling                    = 0.5               # [             0.7 ] ( 0.1  ) Amount of space used up by arrow.
 
   GtkNotebook         :: arrow-spacing                    = 0                 # [               0 ] ( >= 0 ) Spacing between the scroll arrows and the tabs.
-  GtkNotebook         :: tab-curvature                    = 0                 # [               1 ] ( >= 0 ) Size of tab curvature.
-  GtkNotebook         :: tab-overlap                      = 0                 # [               2 ]          Size of tab overlap area.
+  GtkNotebook         :: tab-curvature                    = 1                 # [               1 ] ( >= 0 ) Size of tab curvature — minimal.
+  GtkNotebook         :: tab-overlap                      = 1                 # [               2 ]          Size of tab overlap area.
 
   GtkTreeView         :: horizontal-separator             = 8                 # [               2 ] ( >= 0 ) Horizontal space between cells. Must be an even number.
   GtkTreeView         :: vertical-separator               = 2                 # [               2 ] ( >= 0 ) Vertical space between cells. Must be an even number.
@@ -109,7 +109,7 @@ style "default" = "medium_text"
   GtkEntry::state-hint = 0
 
   bg[NORMAL]          = @background
-  bg[PRELIGHT]        = shade(1.04, @background)
+  bg[PRELIGHT]        = shade(1.06, @background)
   bg[ACTIVE]          = shade(0.96, @background)
   bg[INSENSITIVE]     = @background
   bg[SELECTED]        = @bg_selected
@@ -138,17 +138,17 @@ style "default" = "medium_text"
 
   engine "clearlooks"
   {
-    menubarstyle       = 2 # 0 = flat, 1 = sunken, 2 = flat gradient
+    menubarstyle       = 0 # 0 = flat, 1 = sunken, 2 = flat gradient
   }
 }
 
 style "entry"
 {
   GtkEntry::cursor_color = @entry_cursor
-  GtkEntry::inner-border = { 2, 2, 2, 2 }
+  GtkEntry::inner-border = { 3, 3, 2, 2 }
 
-  xthickness = 0
-  ythickness = 0
+  xthickness = 1
+  ythickness = 1
 
   # special base + text for GtkEntry to aid with visibility during text entry
 
@@ -188,16 +188,16 @@ style "mixer_strip_entry" = "small_text"
         xthickness = 3
         ythickness = 3
 
-	bg[NORMAL] = @bases
-	bg[ACTIVE] = @bases
-	bg[SELECTED] = @bases
+	bg[NORMAL] = shade(0.85, @background)
+	bg[ACTIVE] = shade(0.85, @background)
+	bg[SELECTED] = shade(0.85, @background)
 
 	text[NORMAL] = @texts
 	text[ACTIVE] = @texts
 	text[SELECTED] = @texts
 
-	base[NORMAL] = @bases
-	base[ACTIVE] = @bases
+	base[NORMAL] = shade(0.85, @background)
+	base[ACTIVE] = shade(0.85, @background)
 	base[SELECTED] = shade (0.4, @texts)
 }
 
@@ -226,28 +226,28 @@ style "treeview_display" = "small_bold_text"
 	GtkWidget::focus-line-width = 0
 
 	# expander arrow border and DnD "icon" text
-	fg[NORMAL] = { 0.8, 0.8, 0.8 }
+	fg[NORMAL] = { 0.83, 0.81, 0.80 }
 
-	bg[NORMAL] = { 0.8, 0.8, 0.8 }
+	bg[NORMAL] = { 0.83, 0.81, 0.80 }
 
 	# background with no rows or no selection, plus
 	# expander arrow core and DnD "icon" background
-	base[NORMAL] = { 0.20, 0.20, 0.25 }
+	base[NORMAL] = { 0.14, 0.13, 0.12 }
 
 	# selected row bg when window does not have focus (including during DnD)
-	base[ACTIVE] = { 0.0, 0.75, 0.75 }
+	base[ACTIVE] = @bg_selected
 
 	# selected row bg when window has focus
-	base[SELECTED] = { 0, 0.75, 0.75 }
+	base[SELECTED] = @bg_selected
 
 	# row text when in normal state and not a parent
-	text[NORMAL] = { 0.80, 0.80, 0.80 }
+	text[NORMAL] = { 0.83, 0.81, 0.80 }
 
 	# selected row text with window focus
-	text[SELECTED] = { 1.0, 1.0, 1.0 }
+	text[SELECTED] = { 0.95, 0.93, 0.91 }
 
 	# selected row text without window focus (including during DnD)
-	text[ACTIVE] = { 1.0, 1.0, 1.0 }
+	text[ACTIVE] = { 0.95, 0.93, 0.91 }
 }
 
 style "track_header_inactive"  = "large_text"
@@ -437,8 +437,8 @@ style "contrasting_popup" = "medium_monospace_text"
 
 style "base_frame"
 {
-	fg[NORMAL] = @background
-	bg[NORMAL] = @background
+	fg[NORMAL] = shade(1.04, @background)
+	bg[NORMAL] = shade(1.08, @background)
 }
 
 style "text_highlight_frame"
@@ -449,6 +449,9 @@ style "text_highlight_frame"
 
 style "transport_frame"
 {
+	bg[NORMAL] = @background
+	bg[ACTIVE] = @background
+	bg[PRELIGHT] = @background
 }
 
 style "editor_window"
@@ -470,13 +473,13 @@ style "default_button" = "small_text"
 
 style "gain_fader"
 {
-	bg[NORMAL] = shade (0.85, @background)
-	bg[ACTIVE] = shade (0.855, @background)
-	bg[INSENSITIVE] = shade (0.855, @background)
+	bg[NORMAL] = shade (0.88, @background)
+	bg[ACTIVE] = shade (0.90, @background)
+	bg[INSENSITIVE] = shade (0.88, @background)
 
-	fg[INSENSITIVE] = shade(1.2, @background)
-	fg[NORMAL] = shade(1.2, @background)
-	fg[ACTIVE] = shade(1.2, @background)
+	fg[INSENSITIVE] = shade(1.25, @background)
+	fg[NORMAL] = shade(1.25, @background)
+	fg[ACTIVE] = shade(1.25, @background)
 }
 
 style "default_menu" = "medium_text"
@@ -578,9 +581,9 @@ style "shuttle_control" = "smaller_text"
 style "ardour_adjusters" = "default_generic"
 {
 	# this is the color of the slider
-	bg[NORMAL] = @scrollbar_slider
-	# this is the color of the trough
-	bg[ACTIVE] = @darkest
+	bg[NORMAL] = shade(1.3, @background)
+	# this is the color of the trough — reduced contrast
+	bg[ACTIVE] = shade(0.85, @background)
 }
 
 style "editor_hscrollbar" = "ardour_adjusters"
@@ -1012,8 +1015,8 @@ style "paler_bright_when_active" = "medium_text"
 
 style "selected_strip_frame"
 {
-	fg[NORMAL] = @bright_indicator
-	bg[NORMAL] = darker(@bright_indicator)
+	fg[NORMAL] = shade(1.08, @background)
+	bg[NORMAL] = shade(1.12, @background)
 }
 
 style "flashing_alert" = "smaller_text"
@@ -1098,6 +1101,11 @@ style "default_toggle_button_active" = "default_toggle_button"
 style "black_separator" = "default"
 {
 	bg[NORMAL] = @darkest
+}
+
+style "mixer_section_separator" = "default"
+{
+	bg[NORMAL] = shade(0.80, @background)
 }
 
 style "settings_notebook" = "big_text"
@@ -1258,6 +1266,7 @@ widget "*PluginAnalysisInfoLabel" style:highest "medium_monospace_text"
 widget "*BarControlSpinner*" style:highest "small_spinner"
 
 widget "*BlackSeparator" style:highest "black_separator"
+widget "*MixerSectionSeparator" style:highest "mixer_section_separator"
 
 widget "*MetricLabel" style:highest "medium_text"
 widget "*ChoiceWindow" style:highest "default_generic"

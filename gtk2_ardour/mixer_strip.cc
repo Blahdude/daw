@@ -208,7 +208,7 @@ MixerStrip::init ()
 	hide_button.set_tweaks (ArdourButton::Square);
 	set_tooltip (&hide_button, _("Hide this mixer strip"));
 
-	input_button_box.set_spacing(CairoWidget::flat_buttons() ? 2 : 1);
+	input_button_box.set_spacing(CairoWidget::flat_buttons() ? 4 : 1);
 	input_button_box.pack_start (input_button, true, true);
 
 	bottom_button_table.attach (gpm.meter_point_button, 1, 2, 0, 1);
@@ -235,14 +235,14 @@ MixerStrip::init ()
 	solo_isolated_led->set_text (_("Iso"));
 
 	solo_iso_table.set_homogeneous (true);
-	solo_iso_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
+	solo_iso_table.set_spacings (CairoWidget::flat_buttons() ? 4 : 1);
 	solo_iso_table.attach (*solo_isolated_led, 0, 1, 0, 1);
 	solo_iso_table.attach (*solo_safe_led, 1, 2, 0, 1);
 	solo_iso_table.show ();
 
 	rec_mon_table.set_homogeneous (true);
-	rec_mon_table.set_row_spacings (CairoWidget::flat_buttons() ? 2 : 1);
-	rec_mon_table.set_col_spacings (CairoWidget::flat_buttons() ? 2 : 1);
+	rec_mon_table.set_row_spacings (CairoWidget::flat_buttons() ? 4 : 1);
+	rec_mon_table.set_col_spacings (CairoWidget::flat_buttons() ? 4 : 1);
 	if (ARDOUR::Profile->get_mixbus()) {
 		rec_mon_table.resize (1, 3);
 		rec_mon_table.attach (*monitor_input_button, 1, 2, 0, 1);
@@ -274,9 +274,9 @@ MixerStrip::init ()
 	}
 
 	mute_solo_table.set_homogeneous (true);
-	mute_solo_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
+	mute_solo_table.set_spacings (CairoWidget::flat_buttons() ? 4 : 1);
 
-	bottom_button_table.set_spacings (CairoWidget::flat_buttons() ? 2 : 1);
+	bottom_button_table.set_spacings (CairoWidget::flat_buttons() ? 4 : 1);
 	bottom_button_table.set_homogeneous (true);
 	bottom_button_table.attach (gpm.gain_automation_state_button, 0, 1, 0, 1);
 	bottom_button_table.attach (group_button, 0, 1, 1, 2);
@@ -308,8 +308,23 @@ MixerStrip::init ()
 	input_button_box.pack_start (trim_control, false, false);
 
 	global_vpacker.set_no_show_all ();
-	global_vpacker.set_border_width (CairoWidget::flat_buttons() ? 2 : 0);
-	global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 2 : 1);
+	global_vpacker.set_border_width (0);
+	global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 5 : 1);
+
+	if (CairoWidget::flat_buttons()) {
+		_section_sep1.set_size_request (-1, 1);
+		_section_sep1.set_name ("MixerSectionSeparator");
+		_section_sep1.show ();
+		_section_sep2.set_size_request (-1, 1);
+		_section_sep2.set_name ("MixerSectionSeparator");
+		_section_sep2.show ();
+		_section_sep3.set_size_request (-1, 1);
+		_section_sep3.set_name ("MixerSectionSeparator");
+		_section_sep3.show ();
+		_section_sep4.set_size_request (-1, 1);
+		_section_sep4.set_name ("MixerSectionSeparator");
+		_section_sep4.show ();
+	}
 
 	width_button.set_name ("mixer strip button");
 	hide_button.set_name ("mixer strip button");
@@ -334,16 +349,36 @@ MixerStrip::init ()
 
 	global_vpacker.pack_start (width_hide_box, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (name_button, Gtk::PACK_SHRINK);
+
+	if (CairoWidget::flat_buttons()) {
+		global_vpacker.pack_start (_section_sep1, false, false, 5);
+	}
+
 	global_vpacker.pack_start (input_button_box, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (invert_button_box, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (_tmaster_widget, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (processor_box, true, true);
+
+	if (CairoWidget::flat_buttons()) {
+		global_vpacker.pack_start (_section_sep2, false, false, 5);
+	}
+
 	global_vpacker.pack_start (panners, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (rec_mon_table, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (master_volume_table, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (solo_iso_table, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (mute_solo_table, Gtk::PACK_SHRINK);
+
+	if (CairoWidget::flat_buttons()) {
+		global_vpacker.pack_start (_section_sep3, false, false, 5);
+	}
+
 	global_vpacker.pack_start (gpm, Gtk::PACK_SHRINK);
+
+	if (CairoWidget::flat_buttons()) {
+		global_vpacker.pack_start (_section_sep4, false, false, 5);
+	}
+
 	global_vpacker.pack_start (control_slave_ui, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (bottom_button_table, Gtk::PACK_SHRINK);
 	global_vpacker.pack_start (output_button, Gtk::PACK_SHRINK);
@@ -365,7 +400,6 @@ MixerStrip::init ()
 #endif
 
 	global_frame.add (global_vpacker);
-	global_frame.set_shadow_type (Gtk::SHADOW_IN);
 	global_frame.set_name ("BaseFrame");
 
 	add (global_frame);
@@ -1298,11 +1332,11 @@ MixerStrip::set_selected (bool yn)
 	AxisView::set_selected (yn);
 
 	if (selected()) {
-		global_frame.set_shadow_type (Gtk::SHADOW_ETCHED_OUT);
 		global_frame.set_name ("MixerStripSelectedFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("selected strip edge"));
 	} else {
-		global_frame.set_shadow_type (Gtk::SHADOW_IN);
 		global_frame.set_name ("MixerStripFrame");
+		global_frame.set_edge_color (UIConfiguration::instance().color ("strip frame edge"));
 	}
 
 	global_frame.queue_draw ();

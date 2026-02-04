@@ -21,7 +21,7 @@
 
 #include <ytkmm/drawingarea.h>
 #include <ytkmm/eventbox.h>
-#include <ytkmm/frame.h>
+#include "widgets/frame.h"
 #include <ytkmm/menu.h>
 
 #include "ardour/types.h"
@@ -73,7 +73,7 @@ private:
 	Gtk::EventBox _spacer;
 	Gtk::EventBox _spacer_ctrl;
 	Gtk::EventBox _spacer_peak;
-	Gtk::Frame    _global_frame;
+	ArdourWidgets::Frame _global_frame;
 	Gtk::VBox     _global_vpacker;
 	Gtk::VBox     _surround_meter_box;
 	Gtk::HBox     _binaural_meter_box;

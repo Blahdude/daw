@@ -36,6 +36,7 @@
 #include "ardour/plugin_insert.h"
 #include "ardour/plugin_manager.h"
 #include "ardour/readable.h"
+#include "ardour/route_group.h"
 #include "ardour/region_factory.h"
 #include "ardour/simple_export.h"
 #include "ardour/source_factory.h"
@@ -401,6 +402,33 @@ ARDOUR::LuaAPI::reset_processor_to_default ( std::shared_ptr<Processor> proc )
 }
 
 int
+ARDOUR::LuaAPI::region_loudness (lua_State *L)
+{
+	typedef std::shared_ptr<AudioRegion> T;
+
+	int top = lua_gettop (L);
+	if (top < 1) {
+		return luaL_argerror (L, 1, "invalid number of arguments, :region_loudness (AudioRegion)");
+	}
+
+	T* const ar = luabridge::Userdata::get<T> (L, 1, false);
+	if (!ar || !(*ar)) {
+		return luaL_error (L, "Invalid pointer to Ardour:AudioRegion");
+	}
+
+	float tp, i, s, m;
+	if (!(*ar)->loudness (tp, i, s, m, nullptr)) {
+		return luaL_error (L, "Failed to analyze region loudness");
+	}
+
+	luabridge::Stack<float>::push (L, tp);
+	luabridge::Stack<float>::push (L, i);
+	luabridge::Stack<float>::push (L, s);
+	luabridge::Stack<float>::push (L, m);
+	return 4;
+}
+
+int
 ARDOUR::LuaAPI::plugin_automation (lua_State *L)
 {
 	typedef std::shared_ptr<Processor> T;
@@ -669,6 +697,151 @@ ARDOUR::LuaAPI::simple_export (lua_State* L)
 	void* ptr = luabridge::UserdataValue<SimpleExport>::place (L);
 	SimpleExport* se = new (ptr) SimpleExport ();
 	se->set_session (s);
+	return 1;
+}
+
+int
+ARDOUR::LuaAPI::new_audio_route (lua_State* L)
+{
+	/* Session:new_audio_route (input_channels, output_channels, route_group, how_many, name_template, flags, order)
+	 * self=1, args at 2..8
+	 * Arg 4 (stack index 5) is shared_ptr<RouteGroup> — nil-safe
+	 */
+	int top = lua_gettop (L);
+	if (top < 8) {
+		return luaL_argerror (L, 1, "invalid number of arguments, :new_audio_route (input_ch, output_ch, route_group, how_many, name, flags, order)");
+	}
+
+	Session* const s = luabridge::Userdata::get<Session> (L, 1, true);
+	if (!s) {
+		return luaL_error (L, "Invalid pointer to Session");
+	}
+
+	int input_channels                = luabridge::Stack<int>::get (L, 2);
+	int output_channels               = luabridge::Stack<int>::get (L, 3);
+
+	std::shared_ptr<RouteGroup> rg;
+	if (!lua_isnil (L, 4)) {
+		std::shared_ptr<RouteGroup> const* rgp =
+			luabridge::Userdata::get<std::shared_ptr<RouteGroup>> (L, 4, true);
+		if (rgp) {
+			rg = *rgp;
+		}
+	}
+
+	uint32_t how_many                 = luabridge::Stack<uint32_t>::get (L, 5);
+	std::string name_template         = luabridge::Stack<std::string>::get (L, 6);
+	PresentationInfo::Flag flags      = luabridge::Stack<PresentationInfo::Flag>::get (L, 7);
+	PresentationInfo::order_t order   = luabridge::Stack<PresentationInfo::order_t>::get (L, 8);
+
+	RouteList rl = s->new_audio_route (input_channels, output_channels, rg, how_many, name_template, flags, order);
+
+	luabridge::Stack<RouteList>::push (L, rl);
+	return 1;
+}
+
+int
+ARDOUR::LuaAPI::new_audio_track (lua_State* L)
+{
+	/* Session:new_audio_track (input_ch, output_ch, route_group, count, name, order, mode, input_auto_connect)
+	 * self=1, args at 2..9
+	 * Arg 4 (stack index 4) is shared_ptr<RouteGroup> — nil-safe
+	 */
+	int top = lua_gettop (L);
+	if (top < 7) {
+		return luaL_argerror (L, 1, "invalid number of arguments, :new_audio_track (input_ch, output_ch, route_group, count, name, order [, mode] [, input_auto_connect])");
+	}
+
+	Session* const s = luabridge::Userdata::get<Session> (L, 1, true);
+	if (!s) {
+		return luaL_error (L, "Invalid pointer to Session");
+	}
+
+	int input_channels                = luabridge::Stack<int>::get (L, 2);
+	int output_channels               = luabridge::Stack<int>::get (L, 3);
+
+	std::shared_ptr<RouteGroup> rg;
+	if (!lua_isnil (L, 4)) {
+		std::shared_ptr<RouteGroup> const* rgp =
+			luabridge::Userdata::get<std::shared_ptr<RouteGroup>> (L, 4, true);
+		if (rgp) {
+			rg = *rgp;
+		}
+	}
+
+	uint32_t how_many                 = luabridge::Stack<uint32_t>::get (L, 5);
+	std::string name_template         = luabridge::Stack<std::string>::get (L, 6);
+	PresentationInfo::order_t order   = luabridge::Stack<PresentationInfo::order_t>::get (L, 7);
+
+	TrackMode mode = Normal;
+	if (top >= 8) {
+		mode = luabridge::Stack<TrackMode>::get (L, 8);
+	}
+
+	bool input_auto_connect = true;
+	if (top >= 9) {
+		input_auto_connect = luabridge::Stack<bool>::get (L, 9);
+	}
+
+	std::list<std::shared_ptr<AudioTrack>> tl = s->new_audio_track (input_channels, output_channels, rg, how_many, name_template, order, mode, input_auto_connect);
+
+	luabridge::Stack<std::list<std::shared_ptr<AudioTrack>>>::push (L, tl);
+	return 1;
+}
+
+int
+ARDOUR::LuaAPI::new_midi_track (lua_State* L)
+{
+	/* Session:new_midi_track (input, output, strict_io, instrument, pset, route_group, count, name, order, mode, input_auto_connect)
+	 * self=1, args at 2..12
+	 * Arg 7 (stack index 7) is shared_ptr<RouteGroup> — nil-safe
+	 */
+	int top = lua_gettop (L);
+	if (top < 12) {
+		return luaL_argerror (L, 1, "invalid number of arguments, :new_midi_track (input, output, strict_io, instrument, pset, route_group, count, name, order, mode, input_auto_connect)");
+	}
+
+	Session* const s = luabridge::Userdata::get<Session> (L, 1, true);
+	if (!s) {
+		return luaL_error (L, "Invalid pointer to Session");
+	}
+
+	ChanCount input                   = luabridge::Stack<ChanCount>::get (L, 2);
+	ChanCount output                  = luabridge::Stack<ChanCount>::get (L, 3);
+	bool strict_io                    = luabridge::Stack<bool>::get (L, 4);
+
+	std::shared_ptr<PluginInfo> instrument;
+	if (!lua_isnil (L, 5)) {
+		std::shared_ptr<PluginInfo> const* pip =
+			luabridge::Userdata::get<std::shared_ptr<PluginInfo>> (L, 5, true);
+		if (pip) {
+			instrument = *pip;
+		}
+	}
+
+	Plugin::PresetRecord* pset = NULL;
+	if (!lua_isnil (L, 6)) {
+		pset = luabridge::Userdata::get<Plugin::PresetRecord> (L, 6, true);
+	}
+
+	std::shared_ptr<RouteGroup> rg;
+	if (!lua_isnil (L, 7)) {
+		std::shared_ptr<RouteGroup> const* rgp =
+			luabridge::Userdata::get<std::shared_ptr<RouteGroup>> (L, 7, true);
+		if (rgp) {
+			rg = *rgp;
+		}
+	}
+
+	uint32_t how_many                 = luabridge::Stack<uint32_t>::get (L, 8);
+	std::string name_template         = luabridge::Stack<std::string>::get (L, 9);
+	PresentationInfo::order_t order   = luabridge::Stack<PresentationInfo::order_t>::get (L, 10);
+	TrackMode mode                    = luabridge::Stack<TrackMode>::get (L, 11);
+	bool input_auto_connect           = luabridge::Stack<bool>::get (L, 12);
+
+	std::list<std::shared_ptr<MidiTrack>> tl = s->new_midi_track (input, output, strict_io, instrument, pset, rg, how_many, name_template, order, mode, input_auto_connect);
+
+	luabridge::Stack<std::list<std::shared_ptr<MidiTrack>>>::push (L, tl);
 	return 1;
 }
 

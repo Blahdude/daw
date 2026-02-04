@@ -57,4 +57,10 @@ public:
 	              std::string& error_msg,
 	              std::function<void(const std::string&)> on_output,
 	              CopilotUndoRecord& undo_record);
+
+private:
+	/** After successful Lua execution, scan all plugin automation controls
+	 *  and set any that have events but are in Off state to Play.
+	 */
+	void ensure_plugin_automation_playback (ARDOUR::Session*);
 };

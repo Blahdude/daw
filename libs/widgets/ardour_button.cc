@@ -320,8 +320,13 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	}
 
 	if (active_state () == Gtkmm2ext::ExplicitActive) {
-		bool led   = (_elements & Indicator) == Indicator;
-		text_color = led ? text_inactive_color :  text_active_color;
+		if (flat) {
+			/* flat: whole button fills with active color, so always use active text */
+			text_color = text_active_color;
+		} else {
+			bool led   = (_elements & Indicator) == Indicator;
+			text_color = led ? text_inactive_color :  text_active_color;
+		}
 		led_color  = led_active_color;
 	} else {
 		text_color = text_inactive_color;
@@ -373,10 +378,7 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	// draw edge (filling a rect underneath, rather than stroking a border on top, allows the corners to be lighter-weight.
 	if ((_elements & (Body|Edge)) == (Body|Edge)) {
 		if (flat) {
-			rounded_function (cr, 0.5, 0.5, get_width()-1, get_height()-1, corner_radius);
-			Gtkmm2ext::set_source_rgba (cr, outline_color);
-			cairo_set_line_width(cr, 1.0);
-			cairo_stroke(cr);
+			/* flat buttons: no outline/edge — defined by fill contrast only */
 		} else {
 			rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius + 1.5*scale);
 			Gtkmm2ext::set_source_rgba (cr, outline_color);
@@ -386,25 +388,38 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 
 	// background fill
 	if ((_elements & Body)==Body) {
-		rounded_function (cr, 1*scale, 1*scale, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
-		if (active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
+		if (flat) {
+			rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius);
+		} else {
+			rounded_function (cr, 1*scale, 1*scale, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
+		}
+		if (flat && active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
+			/* flat ImplicitActive: tint body fill — blend fill_active_color at ~30% over fill_inactive_color */
+			Gtkmm2ext::HSV inactive_hsv (fill_inactive_color);
+			Gtkmm2ext::HSV active_hsv (fill_active_color);
+			Gtkmm2ext::HSV blended = inactive_hsv.mix (active_hsv, 0.3);
+			Gtkmm2ext::set_source_rgba (cr, blended.color ());
+			cairo_fill (cr);
+		} else if (flat && active_state() == Gtkmm2ext::ExplicitActive) {
+			/* flat ExplicitActive: always fill with active color (whole button becomes state color) */
+			Gtkmm2ext::set_source_rgba (cr, fill_active_color);
+			cairo_fill (cr);
+		} else if (active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
 			Gtkmm2ext::set_source_rgba (cr, fill_inactive_color);
 			cairo_fill (cr);
 		} else if ((active_state() == Gtkmm2ext::ExplicitActive) && !((_elements & Indicator)==Indicator) && !((_tweaks & TransportIcon)==TransportIcon)) {
-			//background color
 			Gtkmm2ext::set_source_rgba (cr, fill_active_color);
 			cairo_fill (cr);
-		} else {  //inactive, or it has an indicator
-			//background color
+		} else {
 			Gtkmm2ext::set_source_rgba (cr, fill_inactive_color);
 		}
 		cairo_fill (cr);
 	}
 
-	// IMPLICIT ACTIVE: draw a border of the active color
+	// IMPLICIT ACTIVE: draw a border of the active color (non-flat only; flat uses tinted fill above)
 	if ((_elements & Body)==Body) {
-		if (active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
-			cairo_set_line_width (cr, flat ? 1.5*scale : 2.0*scale);
+		if (!flat && active_state() == Gtkmm2ext::ImplicitActive && !((_elements & Indicator)==Indicator)) {
+			cairo_set_line_width (cr, 2.0*scale);
 			rounded_function (cr, 2*scale, 2*scale, get_width() - 4*scale, get_height() - 4*scale, corner_radius-0.5*scale);
 			Gtkmm2ext::set_source_rgba (cr, fill_active_color);
 			cairo_stroke (cr);
@@ -572,23 +587,31 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	if (_elements & Menu) {
 		const float trih = ceil(_diameter * .5);
 		const float triw2 = ceil(.577 * _diameter * .5); // 1/sqrt(3) Equilateral triangle
-		//menu arrow
-		cairo_set_source_rgba (cr, 1, 1, 1, 0.4);
-		cairo_move_to(cr, get_width() - triw2 - 5 * scale, rint((get_height() + trih) * .5));
-		cairo_rel_line_to(cr, -triw2, -trih);
-		cairo_rel_line_to(cr, 2. * triw2, 0);
-		cairo_close_path(cr);
 
-		cairo_set_source_rgba (cr, 1, 1, 1, 0.4);
-		cairo_fill(cr);
+		if (flat) {
+			/* flat: single-color chevron using text_color */
+			Gtkmm2ext::set_source_rgba (cr, text_color);
+			cairo_move_to(cr, get_width() - triw2 - 5 * scale, rint((get_height() + trih) * .5));
+			cairo_rel_line_to(cr, -triw2, -trih);
+			cairo_rel_line_to(cr, 2. * triw2, 0);
+			cairo_close_path(cr);
+			cairo_fill(cr);
+		} else {
+			cairo_set_source_rgba (cr, 1, 1, 1, 0.4);
+			cairo_move_to(cr, get_width() - triw2 - 5 * scale, rint((get_height() + trih) * .5));
+			cairo_rel_line_to(cr, -triw2, -trih);
+			cairo_rel_line_to(cr, 2. * triw2, 0);
+			cairo_close_path(cr);
+			cairo_fill(cr);
 
-		cairo_move_to(cr, get_width() - triw2 - 5 * scale, rint((get_height() + trih) * .5));
-		cairo_rel_line_to(cr, .5 - triw2, .5 - trih);
-		cairo_rel_line_to(cr, 2. * triw2 - 1, 0);
-		cairo_close_path(cr);
-		cairo_set_source_rgba (cr, 0, 0, 0, 0.8);
-		cairo_set_line_width(cr, 1*scale);
-		cairo_stroke(cr);
+			cairo_move_to(cr, get_width() - triw2 - 5 * scale, rint((get_height() + trih) * .5));
+			cairo_rel_line_to(cr, .5 - triw2, .5 - trih);
+			cairo_rel_line_to(cr, 2. * triw2 - 1, 0);
+			cairo_close_path(cr);
+			cairo_set_source_rgba (cr, 0, 0, 0, 0.8);
+			cairo_set_line_width(cr, 1*scale);
+			cairo_stroke(cr);
+		}
 	}
 
 	if (_elements & MetaMenu) {
@@ -599,73 +622,71 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 		cairo_stroke(cr);
 	}
 
-	//Indicator LED
-	if ((_elements & ColorBox)==ColorBox) {
-		cairo_save (cr);
+	//Indicator LED — when flat, skip entirely (state is communicated by fill color)
+	if (!flat) {
+		if ((_elements & ColorBox)==ColorBox) {
+			cairo_save (cr);
 
-		/* move to the center of the indicator/led */
-		if (_elements & (Text | VectorIcon | IconRenderCallback)) {
-			int led_xoff = ceil((char_pixel_width() + _diameter) * .5);
-			if (_led_left) {
-				cairo_translate (cr, led_xoff, get_height() * .5);
+			/* move to the center of the indicator/led */
+			if (_elements & (Text | VectorIcon | IconRenderCallback)) {
+				int led_xoff = ceil((char_pixel_width() + _diameter) * .5);
+				if (_led_left) {
+					cairo_translate (cr, led_xoff, get_height() * .5);
+				} else {
+					cairo_translate (cr, get_width() - led_xoff, get_height() * .5);
+				}
 			} else {
-				cairo_translate (cr, get_width() - led_xoff, get_height() * .5);
+				cairo_translate (cr, get_width() * .5, get_height() * .5);
 			}
-		} else {
-			cairo_translate (cr, get_width() * .5, get_height() * .5);
-		}
 
-		float size = ceil(std::min (get_width(), get_height())/2 - 3*scale);
+			float size = ceil(std::min (get_width(), get_height())/2 - 3*scale);
 
-		//black border
-		cairo_set_source_rgb (cr, 0, 0, 0);
-		rounded_function (cr, -size, -size, size*2, size*2, corner_radius - 1*scale);
-		cairo_fill(cr);
+			//black border
+			cairo_set_source_rgb (cr, 0, 0, 0);
+			rounded_function (cr, -size, -size, size*2, size*2, corner_radius - 1*scale);
+			cairo_fill(cr);
 
-		//inset by 1 px
-		size = size - 1*scale;
+			//inset by 1 px
+			size = size - 1*scale;
 
-		//led color
-		Gtkmm2ext::set_source_rgba (cr, led_color);
-		rounded_function (cr, -size, -size, size*2, size*2, corner_radius - 2*scale);
-		cairo_fill(cr);
+			//led color
+			Gtkmm2ext::set_source_rgba (cr, led_color);
+			rounded_function (cr, -size, -size, size*2, size*2, corner_radius - 2*scale);
+			cairo_fill(cr);
 
-		cairo_restore (cr);
-	} else if (_elements & Indicator) {
-		cairo_save (cr);
+			cairo_restore (cr);
+		} else if (_elements & Indicator) {
+			cairo_save (cr);
 
-		/* move to the center of the indicator/led */
-		if (_elements & (Text | VectorIcon | IconRenderCallback)) {
-			int led_xoff = ceil((char_pixel_width() + _diameter) * .5);
-			if (_led_left) {
-				cairo_translate (cr, led_xoff, get_height() * .5);
+			/* move to the center of the indicator/led */
+			if (_elements & (Text | VectorIcon | IconRenderCallback)) {
+				int led_xoff = ceil((char_pixel_width() + _diameter) * .5);
+				if (_led_left) {
+					cairo_translate (cr, led_xoff, get_height() * .5);
+				} else {
+					cairo_translate (cr, get_width() - led_xoff, get_height() * .5);
+				}
 			} else {
-				cairo_translate (cr, get_width() - led_xoff, get_height() * .5);
+				cairo_translate (cr, get_width() * .5, get_height() * .5);
 			}
-		} else {
-			cairo_translate (cr, get_width() * .5, get_height() * .5);
-		}
 
-		//inset
-		if (!flat) {
+			//inset
 			cairo_arc (cr, 0, 0, _diameter * .5, 0, 2 * M_PI);
 			cairo_set_source (cr, led_inset_pattern);
 			cairo_fill (cr);
-		}
 
-		//black ring
-		if (!flat) {
+			//black ring
 			cairo_set_source_rgb (cr, 0, 0, 0);
 			cairo_arc (cr, 0, 0, _diameter * .5 - 1 * scale, 0, 2 * M_PI);
 			cairo_fill(cr);
+
+			//led color
+			Gtkmm2ext::set_source_rgba (cr, led_color);
+			cairo_arc (cr, 0, 0, _diameter * .5 - 3 * scale, 0, 2 * M_PI);
+			cairo_fill(cr);
+
+			cairo_restore (cr);
 		}
-
-		//led color
-		Gtkmm2ext::set_source_rgba (cr, led_color);
-		cairo_arc (cr, 0, 0, _diameter * .5 - (flat ? 1 : 3) * scale, 0, 2 * M_PI);
-		cairo_fill(cr);
-
-		cairo_restore (cr);
 	}
 
 	// a transparent overlay to indicate insensitivity
@@ -678,24 +699,32 @@ ArdourButton::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_
 	// if requested, show hovering
 	if (UIConfigurationBase::instance().get_widget_prelight() && !((visual_state() & Gtkmm2ext::Insensitive))) {
 		if (_hovering) {
-			rounded_function (cr, 1, 1, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
-			cairo_set_source_rgba (cr, 0.905, 0.917, 0.925, flat ? 0.08 : 0.2);
-			cairo_fill (cr);
 			if (flat) {
-				rounded_function (cr, 0.5, 0.5, get_width() - 1, get_height() - 1, corner_radius);
-				cairo_set_source_rgba (cr, 1.0, 1.0, 1.0, 0.12);
-				cairo_set_line_width (cr, 1.0);
-				cairo_stroke (cr);
+				/* flat hover: just lighten the fill by ~8% */
+				rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius);
+				cairo_set_source_rgba (cr, 1.0, 1.0, 1.0, 0.08);
+				cairo_fill (cr);
+			} else {
+				rounded_function (cr, 1, 1, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
+				cairo_set_source_rgba (cr, 0.905, 0.917, 0.925, 0.2);
+				cairo_fill (cr);
 			}
 		}
 	}
 
 	//user is currently pressing the button. dark outline helps to indicate this
 	if (_grabbed && !(_elements & (Inactive|Menu))) {
-		rounded_function (cr, 1, 1, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
-		cairo_set_line_width(cr, 2*scale);
-		cairo_set_source_rgba (cr, 0.1, 0.1, 0.1, .5);
-		cairo_stroke (cr);
+		if (flat) {
+			/* flat pressed: darken the fill by ~8% */
+			rounded_function (cr, 0, 0, get_width(), get_height(), corner_radius);
+			cairo_set_source_rgba (cr, 0.0, 0.0, 0.0, 0.08);
+			cairo_fill (cr);
+		} else {
+			rounded_function (cr, 1, 1, get_width() - 2*scale, get_height() - 2*scale, corner_radius);
+			cairo_set_line_width(cr, 2*scale);
+			cairo_set_source_rgba (cr, 0.1, 0.1, 0.1, .5);
+			cairo_stroke (cr);
+		}
 	}
 
 	//some buttons (like processor boxes) can be selected  (so they can be deleted).  Draw a selection indicator
@@ -777,9 +806,9 @@ ArdourButton::on_size_request (Gtk::Requisition* req)
 
 		} else /*if (!_text.empty() || !_sizing_texts.empty()) */ {
 
-			const double bls = flat_buttons() ? 1.4 : BASELINESTRETCH;
+			const double bls = flat_buttons() ? 1.5 : BASELINESTRETCH;
 			req->height = std::max(req->height, (int) ceil(char_pixel_height() * bls + 1.0));
-			const double effective_padding = (flat_buttons() && _width_padding == 1.65) ? 2.2 : _width_padding;
+			const double effective_padding = (flat_buttons() && _width_padding == 1.65) ? 2.5 : _width_padding;
 			req->width += rint(effective_padding * char_pixel_width()); // padding
 
 			int sizing_text_width = 0, sizing_text_height = 0;

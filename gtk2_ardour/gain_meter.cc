@@ -375,7 +375,8 @@ GainMeter::hide_all_meters ()
 void
 GainMeterBase::setup_meters (int len)
 {
-	int meter_width = 5;
+	const bool flat = UIConfiguration::instance().get_flat_buttons();
+	int meter_width = flat ? 3 : 5;
 	uint32_t meter_channels = 0;
 	if (_meter) {
 		meter_channels = _meter->input_streams().n_total();
@@ -396,12 +397,12 @@ GainMeterBase::setup_meters (int len)
 			//meter_ticks2_area.show();
 			meter_metric_area.show();
 			if (meter_channels == 1) {
-				meter_width = 10;
+				meter_width = flat ? 6 : 10;
 			}
 			break;
 		case Narrow:
 			if (meter_channels > 1) {
-				meter_width = 4;
+				meter_width = flat ? 3 : 4;
 			}
 			//meter_ticks1_area.hide();
 			//meter_ticks2_area.hide();
@@ -949,9 +950,10 @@ void
 GainMeterBase::set_width (Width w, int len)
 {
 	_width = w;
-	int meter_width = 5;
+	const bool flat = UIConfiguration::instance().get_flat_buttons();
+	int meter_width = flat ? 3 : 5;
 	if (_width == Wide && route() && route()->shared_peak_meter()->input_streams().n_total() == 1) {
-		meter_width = 10;
+		meter_width = flat ? 6 : 10;
 	}
 	level_meter->setup_meters(len, meter_width);
 }
@@ -1039,8 +1041,15 @@ GainMeter::reset_dpi ()
 	meter_metric_area.set_size_request(PX_SCALE(24, 24), -1);
 	gain_automation_state_button.set_size_request (PX_SCALE(12, 15), PX_SCALE(12, 15));
 	set_spacing (PX_SCALE(2, 2));
-	meter_ticks1_area.set_size_request (PX_SCALE(3, 3), -1);
-	meter_ticks2_area.set_size_request (PX_SCALE(3, 3), -1);
+	if (CairoWidget::flat_buttons()) {
+		meter_ticks1_area.set_size_request (0, -1);
+		meter_ticks2_area.set_size_request (0, -1);
+		meter_ticks1_area.hide();
+		meter_ticks2_area.hide();
+	} else {
+		meter_ticks1_area.set_size_request (PX_SCALE(3, 3), -1);
+		meter_ticks2_area.set_size_request (PX_SCALE(3, 3), -1);
+	}
 	if (route()) {
 		GainMeterBase::reset_dpi ();
 	}

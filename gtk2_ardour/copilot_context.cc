@@ -36,6 +36,7 @@
 #include "ardour/send.h"
 #include "ardour/internal_send.h"
 #include "ardour/location.h"
+#include "ardour/meter.h"
 #include "ardour/playlist.h"
 #include "ardour/region.h"
 #include "temporal/tempo.h"
@@ -273,6 +274,22 @@ CopilotContext::build_snapshot (Session* session)
 		auto rec_ctrl = r->rec_enable_control ();
 		if (rec_ctrl && rec_ctrl->get_value () > 0) {
 			out << " | Rec";
+		}
+
+		/* Peak meter levels */
+		auto meter = r->peak_meter ();
+		if (meter) {
+			uint32_t n_chans = meter->input_streams ().n_audio ();
+			if (n_chans > 0) {
+				out << " | Meter:";
+				for (uint32_t ch = 0; ch < n_chans; ++ch) {
+					float peak_db = meter->meter_level (ch, MeterPeak);
+					char mbuf[16];
+					snprintf (mbuf, sizeof(mbuf), " %.1f", peak_db);
+					out << mbuf;
+				}
+				out << " dB";
+			}
 		}
 
 		auto rg = r->route_group ();

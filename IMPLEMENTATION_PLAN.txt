@@ -1,0 +1,203 @@
+ARDOUR MODERN UI — IMPLEMENTATION PLAN
+=======================================
+
+This plan bridges MODERN_UI_VISION.txt to concrete work.
+Read the vision doc first. This is how we get there.
+
+
+WHAT EXISTS TODAY
+------------------
+
+Before building anything, know what we already have:
+
+1. The modern visual theme is done. Flat buttons, warm palette,
+   thin meters, flat faders, GTK2 RC theming — all working.
+
+2. The AI copilot exists. It's a floating window with a chat view,
+   text input, send/cancel/undo buttons. It talks to Claude via API,
+   executes Lua code against the session, and supports undo. It works.
+
+3. The mixer strip already has a VisibilityGroup system that can
+   show and hide individual sections: input, phase invert, rec/mon,
+   solo iso/lock, output, comments, VCA assigns, trigger master.
+   This is controlled per-user via preferences.
+
+4. The mixer strip already has two width modes (Wide and Narrow)
+   with persistence. There is precedent for layout switching.
+
+5. The ProcessorBox (plugin chain), PannerUI, IOButtons, and
+   ControlSlaveUI are all discrete widgets packed into a VBox.
+   They can be shown or hidden independently.
+
+In short: the hiding mechanism exists, the AI backend exists, and
+the visual theme exists. What's missing is the philosophy layer that
+ties them together into the experience described in the vision.
+
+
+WORKSTREAM 1: SIMPLE / FULL MODE TOGGLE
+-----------------------------------------
+
+This is the single most important change. Everything else flows from it.
+
+The mixer strip's global_vpacker currently packs ~20 widgets vertically.
+In Simple Mode, most of them hide. The strip becomes:
+
+  - name_button (track name, colored)
+  - mute_button
+  - solo_button
+  - rec_enable_button (tracks only)
+  - gpm (gain fader + level meter)
+
+Everything else hides: input_button_box, invert_button_box, panners,
+processor_box, solo_iso_table, bottom_button_table, output_button,
+_comment_button, control_slave_ui, _tmaster_widget, trim_control,
+master_volume_table, gain/peak displays.
+
+The VisibilityGroup system already handles some of these. We extend it
+to cover all hideable sections, then create a "Simple" preset that
+hides everything except the five elements above.
+
+The toggle lives in the main toolbar. A single button or segmented
+control: "Simple | Full". It writes a preference and immediately
+updates all visible strips. The preference persists across sessions.
+
+This is not a new mixer. It is the existing mixer with most sections
+set to invisible. The session is identical. The audio engine doesn't
+know or care which mode you're in.
+
+Open question: Does Simple Mode also affect the editor track headers?
+Probably yes — the same philosophy applies. But mixer first.
+
+
+WORKSTREAM 2: EMBEDDED AI BAR
+-------------------------------
+
+The copilot is currently a floating window opened from the menu.
+Nobody will discover it. Nobody will keep it open.
+
+It needs to become an embedded bar — always visible, always at the
+bottom (or top) of the main window. Like a terminal prompt. Like
+Spotlight. Like the ChatGPT input box.
+
+The bar itself is simple: a text entry, a send button, and a small
+status indicator. When the user types and sends, responses appear
+in a slide-up panel or overlay above the bar — not a separate window.
+
+The existing CopilotWindow code handles all the hard parts: API
+communication, Lua execution, conversation management, undo tracking.
+The work here is UI reorganization, not backend work.
+
+The bar should have large, inviting placeholder text:
+"Ask me anything — mix, edit, add effects, change sounds..."
+
+When the AI executes an action, the result is immediate and audible.
+The faders move. The plugins appear (if in Full Mode). The sound
+changes. The bar shows a brief confirmation: "Added reverb to Vocals."
+
+The undo button stays accessible in the bar. One click to reverse
+the last AI action. Low risk encourages experimentation.
+
+
+WORKSTREAM 3: SIMPLE MODE STRIP REFINEMENTS
+---------------------------------------------
+
+Once the basic Simple/Full toggle works, refine the Simple strip:
+
+The strip should feel like a single cohesive column, not a stack of
+widgets with gaps between them. In Simple Mode:
+
+  - The track name fills the full width at the top, colored with
+    the track color. It is the visual identity of the strip.
+
+  - Mute/Solo/Rec buttons sit in a tight horizontal row below the
+    name. They are small, labeled M / S / R, and use fill color
+    for active state. They are the only interactive buttons visible.
+
+  - The fader and meter fill the remaining vertical space. The fader
+    is wide enough to grab comfortably. The meter is thin, beside it.
+
+  - There is nothing below the fader. No output button, no group
+    button, no automation button, no comment button. Clean bottom edge.
+
+  - The overall strip is narrower than the current Wide mode but
+    wider than Narrow mode. A new "Simple" width that feels balanced.
+
+Consider: should the peak/gain numeric display be visible in Simple
+Mode? Probably not — it's a number that means nothing to someone who
+doesn't know dB. The meter provides visual feedback. That's enough.
+
+
+WORKSTREAM 4: PROGRESSIVE DISCLOSURE
+--------------------------------------
+
+Simple Mode hides controls, but users still need to access them
+sometimes — especially as they learn. Two paths to hidden controls:
+
+Path A: The AI. "Show me the EQ for the vocal track." The AI opens
+the relevant plugin UI. "Pan the guitar left." The AI does it without
+showing the pan control. The AI is the primary discovery mechanism.
+
+Path B: Right-click context menu. Right-clicking a strip in Simple
+Mode shows options like "Show plugin chain," "Show panning," "Show
+routing." These reveal individual sections without switching to Full
+Mode entirely. This is for the user who wants to peek behind the
+curtain without pulling it all the way back.
+
+Path C: The Full Mode toggle. The nuclear option. Show everything.
+
+These three paths cover the spectrum from "do it for me" (AI) to
+"let me see one thing" (context menu) to "show me everything" (Full).
+
+
+WORKSTREAM 5: ONBOARDING
+--------------------------
+
+The first-launch experience matters enormously. When someone opens
+this app for the first time:
+
+  - They should see an empty session in Simple Mode.
+  - The AI bar should greet them: "Welcome. I can help you get
+    started. Try: 'Create a new track' or 'Import an audio file.'"
+  - The interface should feel inviting, not empty. The warm dark
+    palette helps here — it feels like a studio, not a spreadsheet.
+
+This is not a wizard or a tutorial overlay. It's just a sensible
+default state with a helpful first message in the AI bar. Minimal.
+
+
+ORDER OF WORK
+--------------
+
+1. Simple/Full toggle — this is the foundation. Without it, nothing
+   else makes sense. Get strips hiding/showing sections correctly.
+
+2. Embedded AI bar — move the copilot from a floating window to an
+   embedded bar. This is the "how do I...?" answer for Simple Mode.
+
+3. Strip refinements — tune the Simple strip layout, spacing, and
+   feel once the toggle works.
+
+4. Progressive disclosure — right-click menus, AI-triggered reveals.
+
+5. Onboarding — first-launch experience, welcome message.
+
+Each workstream is independently valuable. Even just #1 alone makes
+the app significantly more approachable. #2 alone makes the AI
+significantly more discoverable. They compound when combined.
+
+
+CONSTRAINTS
+------------
+
+- No backend changes. The audio engine, plugin system, session format,
+  and routing system are untouched. All changes are in gtk2_ardour/.
+
+- No functionality removed. Every feature remains accessible in Full
+  Mode. Simple Mode is additive UI, not subtractive functionality.
+
+- Classic themes unaffected. All changes gate on the modern theme /
+  flat_buttons() flag. Someone using Clearlooks sees no difference.
+
+- Sessions are mode-agnostic. A session created in Simple Mode opens
+  identically in Full Mode or in stock Ardour. The mode is a display
+  preference, not a session property.

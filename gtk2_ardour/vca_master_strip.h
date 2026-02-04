@@ -29,6 +29,7 @@
 #include <ytkmm/messagedialog.h>
 
 #include "widgets/ardour_button.h"
+#include "widgets/frame.h"
 
 #include "axis_view.h"
 #include "control_slave_ui.h"
@@ -65,7 +66,7 @@ private:
 	std::shared_ptr<ARDOUR::VCA> _vca;
 	GainMeter    gain_meter;
 
-	Gtk::Frame                  global_frame;
+	ArdourWidgets::Frame        global_frame;
 	Gtk::VBox                   global_vpacker;
 	Gtk::HBox                   bottom_padding;
 	Gtk::HBox                   solo_mute_box;

@@ -74,8 +74,8 @@ HistoryOwner::begin_reversible_command (GQuark q)
 		PBD::warning << "An UNDO transaction was started while a prior command was underway. Aborting command (" << g_quark_to_string (q) << ") and prior (" << _current_trans->name() << ")" << endmsg;
 #endif
 		abort_reversible_command();
-		assert (false);
-		return;
+		/* Removed assert(false) — allow recovery by aborting the old
+		 * transaction and falling through to start a new one. */
 	}
 
 	/* If nested begin/commit pairs are used, we create just one UndoTransaction
@@ -123,9 +123,13 @@ HistoryOwner::abort_empty_reversible_command ()
 void
 HistoryOwner::commit_reversible_command (Command *cmd)
 {
-	assert (_current_trans);
-	assert (!_current_trans_quarks.empty ());
 	if (!_current_trans) {
+		PBD::warning << "commit_reversible_command called with no open transaction" << endmsg;
+		return;
+	}
+	if (_current_trans_quarks.empty ()) {
+		PBD::warning << "commit_reversible_command called with empty quark list" << endmsg;
+		abort_reversible_command ();
 		return;
 	}
 

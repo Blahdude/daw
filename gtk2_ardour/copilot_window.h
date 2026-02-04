@@ -17,6 +17,7 @@
  */
 #pragma once
 
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -111,6 +112,11 @@ private:
 	/* undo state */
 	CopilotUndoRecord _last_undo_record;
 	PBD::ScopedConnection _undo_history_connection;
+
+	/* log file */
+	std::ofstream _log_file;
+	void open_log_file ();
+	void log_write (const std::string& tag, const std::string& text);
 
 	/* methods */
 	void session_going_away ();

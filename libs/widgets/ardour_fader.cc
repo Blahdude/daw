@@ -270,16 +270,20 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 	cairo_rectangle (cr, 0, 0, w, h);
 	cairo_fill(cr);
 
-	cairo_set_line_width (cr, flat_buttons() ? 1 : 2);
-	Gtkmm2ext::set_source_rgba (cr, outline_color);
-
-
 	cairo_matrix_t matrix;
 	const double cr_val = flat_buttons() ? 2.0 : CORNER_RADIUS;
-	Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
-	// we use a 'trick' here: The stoke is off by .5px but filling the interior area
-	// after a stroke of 2px width results in an outline of 1px
-	cairo_stroke_preserve(cr);
+
+	if (flat_buttons()) {
+		/* flat: no stroked outline — borderless track */
+		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
+	} else {
+		cairo_set_line_width (cr, 2);
+		Gtkmm2ext::set_source_rgba (cr, outline_color);
+		Gtkmm2ext::rounded_rectangle (cr, CORNER_OFFSET, CORNER_OFFSET, w-CORNER_SIZE, h-CORNER_SIZE, cr_val);
+		// we use a 'trick' here: The stoke is off by .5px but filling the interior area
+		// after a stroke of 2px width results in an outline of 1px
+		cairo_stroke_preserve(cr);
+	}
 
 	if (_orien == VERT) {
 
@@ -303,7 +307,7 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 		/* flat handle indicator at fader boundary */
 		if (CairoWidget::flat_buttons()) {
 			cairo_set_source_rgba(cr, 1, 1, 1, 0.7);
-			cairo_set_line_width(cr, 1.5);
+			cairo_set_line_width(cr, 2.5);
 			cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 			cairo_move_to (cr, 3, ds + CORNER_OFFSET);
 			cairo_line_to (cr, w - 3, ds + CORNER_OFFSET);
@@ -343,7 +347,7 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 		/* flat handle indicator at fader boundary */
 		if (CairoWidget::flat_buttons()) {
 			cairo_set_source_rgba(cr, 1, 1, 1, 0.7);
-			cairo_set_line_width(cr, 1.5);
+			cairo_set_line_width(cr, 2.5);
 			cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 			cairo_move_to (cr, ds, 3);
 			cairo_line_to (cr, ds, h - 3);
@@ -356,7 +360,8 @@ ArdourFader::render (Cairo::RefPtr<Cairo::Context> const& ctx, cairo_rectangle_t
 		cairo_set_line_width(cr, 1);
 		cairo_set_line_cap(cr, CAIRO_LINE_CAP_ROUND);
 		Gdk::Color c = fg_color (Gtk::STATE_ACTIVE);
-		cairo_set_source_rgba (cr, c.get_red_p() * 1.5, c.get_green_p() * 1.5, c.get_blue_p() * 1.5, 0.85);
+		const double unity_alpha = flat_buttons() ? 0.45 : 0.85;
+		cairo_set_source_rgba (cr, c.get_red_p() * 1.5, c.get_green_p() * 1.5, c.get_blue_p() * 1.5, unity_alpha);
 		if (_orien == VERT) {
 			if (_unity_loc < h - CORNER_RADIUS) {
 				cairo_move_to (cr, 1.5, _unity_loc + CORNER_OFFSET + .5);

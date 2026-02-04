@@ -855,6 +855,22 @@ def build(bld):
     obj.install_path = bld.env['CONFDIR']
     set_subst_dict(obj, font_subst_dict)
 
+    font_subst_dict['FONTFAMILY'] = ''
+
+    obj              = bld(features = 'subst')
+    obj.source       = [ 'modern.rc.in' ]
+    obj.target       = 'modern.rc'
+    obj.install_path = bld.env['CONFDIR']
+    set_subst_dict(obj, font_subst_dict)
+
+    font_subst_dict['FONTFAMILY'] = 'ArdourSans'
+
+    obj              = bld(features = 'subst')
+    obj.source       = [ 'modern.rc.in' ]
+    obj.target       = 'modern.ardoursans.rc'
+    obj.install_path = bld.env['CONFDIR']
+    set_subst_dict(obj, font_subst_dict)
+
     obj              = bld(features = 'subst')
     obj.source       = [ 'default_ui_config.in' ]
     obj.target       = 'default_ui_config'

@@ -121,6 +121,14 @@ Port/IO Routing Support for AI Copilot
 9. Engine-level connect: Ask "connect Audio 1 out 1 to Bus 1 in 1" -- should use engine:connect("Audio 1:out 1", "Bus 1:in 1")
 10. Undo: After a copilot routing operation, say "undo that" -- operation should revert cleanly
 
+Route Naming / RouteList Capture for AI Copilot
+=================================================
+
+1. Single bus by name: Ask "create a reverb bus and send Audio 1 to it" -- should succeed on first attempt without a retry (captures RouteList, no name guessing)
+2. Multiple buses: Ask "create two reverb buses" -- should handle ' 1' / ' 2' suffixes correctly
+3. Name conflict: Ask "create a reverb bus" twice -- second one should handle the name conflict (appends ' 1')
+4. No suffix guessing: Ask "create a delay bus called MyDelay and route vocals to it" -- generated code should NOT use route_by_name('MyDelay 1'), should capture the RouteList return value instead
+
 Section Operations for AI Copilot
 ====================================
 
@@ -140,3 +148,46 @@ Section Operations for AI Copilot
 8. Section vs marker separation: Create both section markers and regular markers -- verify context snapshot shows them under separate headers ("Sections:" and "Markers:")
 9. Remove section marker: Ask "remove the intro section marker" -- should iterate locations, find by name + is_section(), use remove()
 10. Undo: After a copilot section operation, say "undo that" -- operation should revert cleanly
+
+Audio Analysis & Metering for AI Copilot
+==========================================
+
+1. Lua binding - region_loudness: Open Window > Scripting and run:
+   local r = Session:route_by_name("Audio 1")
+   if r then
+     local trk = r:to_track()
+     local pl = trk:playlist()
+     local reg = pl:region_list():front()
+     local ar = reg:to_audioregion()
+     local tp, i, s, m = ARDOUR.LuaAPI.region_loudness(ar)
+     print("True Peak: " .. tp .. " dBFS, Integrated: " .. i .. " LUFS, Short-term: " .. s .. " LUFS, Momentary: " .. m .. " LUFS")
+   end
+   -- Should print loudness metrics for the first region on Audio 1
+2. Lua binding - peak meter: Open Window > Scripting and run:
+   local r = Session:route_by_name("Audio 1")
+   print(r:peak_meter():meter_level(0, ARDOUR.MeterType.MeterPeak))
+   -- Should print the current peak meter level in dB for channel 0
+3. Meter in snapshot: Open copilot, send any message -- verify the session context includes meter levels per route (e.g., "| Meter: -12.3 -11.8 dB")
+4. Copilot clipping check: Ask "is anything clipping?" -- should check meter levels from snapshot and/or run analysis code
+5. Copilot loudness check: Ask "check the loudness of the first region on Audio 1" -- should generate Lua using ARDOUR.LuaAPI.region_loudness()
+6. Copilot FFT analysis: Ask "analyze the frequency content of my kick drum" -- should generate Lua using ARDOUR.DSP.FFTSpectrum
+7. Copilot amplitude check: Ask "what's the peak level of the vocals region?" -- should use ar:maximum_amplitude() or ar:rms()
+8. Copilot gain staging: Ask "how's my gain staging?" -- should reference meter levels from the snapshot in its analysis
+
+Plugin Automation State Fix for AI Copilot
+=============================================
+
+1. Auto-play safety net: Ask "add reverb to master then make reverb go crazy after 3 seconds" -- ACE Reverb is added, automation lanes show "Play" mode (not Manual), automation points are visible in the editor
+2. Undo: After the above, click Undo -- reverb and automation are removed
+3. Manual mode preserved: Manually create a plugin with automation in Manual mode, then run a copilot command that doesn't touch that plugin -- verify the existing Manual automation is NOT changed to Play
+4. Helper function: Ask "automate the EQ frequency on Audio 1" -- generated code should use copilot_set_plugin_automation() helper (preferred) or the manual ARDOUR.LuaAPI.plugin_automation() approach
+5. Fallback works: Even if AI generates code that forgets to set Play, the C++ safety net should catch it and set automation to Play after execution
+
+System Prompt Fixes for AI Copilot
+====================================
+
+1. Track ambiguity: With multiple tracks, say "add reverb" -- copilot should ask which track instead of silently picking one
+2. Undo contradiction: Add automation points -- should work with proper begin/commit_reversible_command wrapping (simple control changes like gain/pan should NOT use it)
+3. Analysis honesty: With default faders (all 0 dB), say "analyze my mix" -- should note these are untouched defaults, not praise them as "perfect"
+4. Plugin recommendations: Say "what plugins am I missing?" -- should only suggest plugins from the installed plugins list, not hypothetical third-party plugins
+5. MIDI region creation: Say "add some MIDI notes" -- should use mtav:add_region(), not invented methods like playlist:new_region_from_scratch() or RegionFactory::create()

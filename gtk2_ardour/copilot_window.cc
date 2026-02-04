@@ -21,7 +21,9 @@
 #endif
 
 #include <algorithm>
+#include <ctime>
 
+#include <glib/gstdio.h>
 #include <glibmm/miscutils.h>
 
 #include "gtkmm2ext/gtk_ui.h"
@@ -153,16 +155,16 @@ static const char* system_prompt =
 "  -- The undo framework tracks TempoMap changes automatically.\n"
 "\n"
 "CREATING TRACKS:\n"
-"  Session:new_audio_track(input_channels, output_channels, ARDOUR.RouteGroup(), count, name, order, ARDOUR.TrackMode.Normal, true)\n"
+"  Session:new_audio_track(input_channels, output_channels, nil, count, name, order, ARDOUR.TrackMode.Normal, true)\n"
 "  -- For new_audio_track: typically use 1 (mono) or 2 (stereo) for input/output channels\n"
 "  -- count = number of tracks to create, name = base name string\n"
-"  -- order = -1 (to add at end), ARDOUR.RouteGroup() for no group\n"
+"  -- order = -1 (to add at end), nil for no group\n"
 "\n"
 "  Session:new_midi_track(\n"
 "    ARDOUR.ChanCount(ARDOUR.DataType('midi'), 1),\n"
 "    ARDOUR.ChanCount(ARDOUR.DataType('audio'), 2),\n"
 "    true, ARDOUR.PluginInfo(), nil,\n"
-"    ARDOUR.RouteGroup(), count, name, -1, ARDOUR.TrackMode.Normal, true)\n"
+"    nil, count, name, -1, ARDOUR.TrackMode.Normal, true)\n"
 "  -- For new_midi_track: first arg is MIDI input channels, second is audio output channels\n"
 "  -- ARDOUR.PluginInfo() means no instrument plugin (use ARDOUR.LuaAPI.new_plugin_info() to add one)\n"
 "\n"
@@ -195,10 +197,18 @@ static const char* system_prompt =
 "  group:size() -- number of routes in group\n"
 "\n"
 "CREATING BUSES:\n"
-"  Session:new_audio_route(input_channels, output_channels, ARDOUR.RouteGroup(), count, name,\n"
+"  Session:new_audio_route(input_channels, output_channels, nil, count, name,\n"
 "    ARDOUR.PresentationInfo.Flag.AudioBus, -1)\n"
 "  -- Creates audio buses. Typically use 2 (stereo) for input/output channels.\n"
 "  -- Buses are used as destinations for sends (reverb bus, delay bus, submix bus, etc.)\n"
+"  -- NAMING: A single route with a custom name gets that exact name (no numeric\n"
+"  -- suffix) unless a route with that name already exists. Multiple routes (count > 1)\n"
+"  -- or the default name always get a suffix (' 1', ' 2', etc.).\n"
+"  -- new_audio_route() returns a RouteList; capture it to reference the new route:\n"
+"  local rl = Session:new_audio_route(2, 2, nil, 1, 'MyBus',\n"
+"    ARDOUR.PresentationInfo.Flag.AudioBus, -1)\n"
+"  local new_bus = nil\n"
+"  for r in rl:iter() do new_bus = r; break end\n"
 "\n"
 "ROUTE PROPERTIES (route = any track or bus):\n"
 "  route:name() -- get name\n"
@@ -269,13 +279,14 @@ static const char* system_prompt =
 "  Example: ARDOUR.LuaAPI.new_plugin(Session, 'AUBandpass', ARDOUR.PluginType.AudioUnit, '')\n"
 "\n"
 "SENDS & RETURNS:\n"
-"  -- Create an aux bus (destination for sends):\n"
-"  Session:new_audio_route(2, 2, ARDOUR.RouteGroup(), 1, 'Reverb Bus',\n"
+"  -- Create an aux bus (destination for sends) and capture it:\n"
+"  local rl = Session:new_audio_route(2, 2, nil, 1, 'Reverb Bus',\n"
 "    ARDOUR.PresentationInfo.Flag.AudioBus, -1)\n"
+"  local target = nil\n"
+"  for r in rl:iter() do target = r; break end\n"
 "\n"
-"  -- Create an aux send from a track to a bus:\n"
+"  -- Create an aux send from a track to the bus:\n"
 "  local source = Session:route_by_name('Vocal')\n"
-"  local target = Session:route_by_name('Reverb Bus')\n"
 "  if source and target then\n"
 "    source:add_aux_send(target, ARDOUR.LuaAPI.nil_proc())\n"
 "    -- Returns 0 on success, -1 on failure\n"
@@ -431,7 +442,7 @@ static const char* system_prompt =
 "\n"
 "  -- EXCEPTION: Automation point edits require explicit undo (unlike simple controls).\n"
 "  -- The framework cannot track AutomationList changes automatically.\n"
-"  Session:begin_reversible_command(\"Add automation\")\n"
+"  copilot_begin_undo(\"Add automation\")\n"
 "  local before = al:get_state()\n"
 "\n"
 "  -- Add control points: al:add(time, value, with_guards, with_initial)\n"
@@ -448,7 +459,7 @@ static const char* system_prompt =
 "\n"
 "  local after = al:get_state()\n"
 "  Session:add_command(al:memento_command(before, after))\n"
-"  Session:commit_reversible_command(nil)\n"
+"  copilot_commit_undo(nil)\n"
 "\n"
 "  -- Query value at a position:\n"
 "  al:eval(Temporal.timepos_t(sample_position))\n"
@@ -457,18 +468,32 @@ static const char* system_prompt =
 "  al:size()\n"
 "\n"
 "  -- Clear all automation (MUST be inside undo block):\n"
-"  Session:begin_reversible_command('Clear automation')\n"
+"  copilot_begin_undo('Clear automation')\n"
 "  local before = al:get_state()\n"
 "  al:clear_list()\n"
 "  local after = al:get_state()\n"
 "  Session:add_command(al:memento_command(before, after))\n"
-"  Session:commit_reversible_command(nil)\n"
+"  copilot_commit_undo(nil)\n"
 "\n"
 "  -- Clear range / truncate (also require undo wrapping as above):\n"
 "  al:clear(start_timepos, end_timepos)\n"
 "  al:truncate_end(timepos)\n"
 "\n"
 "  -- Plugin parameter automation:\n"
+"  -- PREFERRED: Use the built-in helper for plugin automation:\n"
+"  -- copilot_set_plugin_automation(proc, param_index, points_table, description)\n"
+"  -- Handles undo, value clamping, thinning, and sets automation to Play.\n"
+"  -- points_table = list of {sample_time, value} pairs.\n"
+"  local proc = route:nth_plugin(0)\n"
+"  if not proc:isnil() then\n"
+"    copilot_set_plugin_automation(proc, param_index, {\n"
+"      {0, 0.3},                              -- time in samples, value\n"
+"      {Session:sample_rate() * 3, 0.3},       -- 3 seconds\n"
+"      {Session:sample_rate() * 3 + 1000, 0.9} -- ramp up\n"
+"    }, 'Automate reverb')\n"
+"  end\n"
+"\n"
+"  -- MANUAL APPROACH (fallback): use ARDOUR.LuaAPI.plugin_automation()\n"
 "  -- Returns: AutomationList, ControlList, ParameterDescriptor\n"
 "  -- param_index is 0-based, only counts input parameters\n"
 "  local proc = route:nth_plugin(0)\n"
@@ -482,12 +507,19 @@ static const char* system_prompt =
 "    local al, cl, pd = ARDOUR.LuaAPI.plugin_automation(proc, param_index)\n"
 "    -- pd.lower, pd.upper = parameter range; clamp values to this range\n"
 "    -- IMPORTANT: cl:add() needs Temporal.timepos_t, NOT a raw number:\n"
-"    Session:begin_reversible_command('Automate plugin')\n"
+"    copilot_begin_undo('Automate plugin')\n"
 "    local before = al:get_state()\n"
 "    cl:add(Temporal.timepos_t(sample_pos), value, false, true)\n"
 "    local after = al:get_state()\n"
 "    Session:add_command(al:memento_command(before, after))\n"
-"    Session:commit_reversible_command(nil)\n"
+"    copilot_commit_undo(nil)\n"
+"\n"
+"    -- IMPORTANT: Set automation state to Play so the curve plays back:\n"
+"    local ac = proc:to_automatable():automation_control(\n"
+"        Evoral.Parameter(ARDOUR.AutomationType.PluginAutomation, 0, param_index), false)\n"
+"    if ac and not ac:isnil() then\n"
+"      ac:set_automation_state(ARDOUR.AutoState.Play)\n"
+"    end\n"
 "  end\n"
 "\n"
 "  -- Or batch-set from a Lua table {[sample_time] = value}:\n"
@@ -519,6 +551,9 @@ static const char* system_prompt =
 "- Same applies to: route:rec_enable_control(), route:solo_control(), route:mute_control(), route:gain_control(), route:nth_plugin(), route:to_track()\n"
 "- Plugin parameters use 0-based indexing\n"
 "- Route names are case-sensitive; use Session:route_by_name() with exact name\n"
+"- Route naming: new_audio_route/new_audio_track/new_midi_track return a RouteList.\n"
+"  Capture the return value to reference newly created routes. For a single custom-named\n"
+"  route, the name is exactly what you passed (no suffix). NEVER guess a ' 1' suffix.\n"
 "- When the user mentions a track name, match it case-insensitively by iterating routes\n"
 "- For dB adjustments: new_linear = current_linear * 10^(dB_change/20)\n"
 "- print() output is shown to the user\n"
@@ -532,11 +567,14 @@ static const char* system_prompt =
 "  Similarly, check the correct namespace for all enum values before using them.\n"
 "- EXCEPTION to undo rule: automation point edits (al:add, al:clear, etc.) and region/playlist\n"
 "  edits (split, trim, move, duplicate, fade, etc.) require explicit undo.\n"
-"  Automation: wrap in begin_reversible_command/commit_reversible_command with al:get_state()/al:memento_command()\n"
-"  Regions/Playlists: wrap in begin_reversible_command/commit_reversible_command with\n"
+"  Automation: wrap in copilot_begin_undo/copilot_commit_undo with al:get_state()/al:memento_command()\n"
+"  Regions/Playlists: wrap in copilot_begin_undo/copilot_commit_undo with\n"
 "  to_stateful():clear_changes() before and add_stateful_diff_command(to_statefuldestructible()) after.\n"
 "- After adding many points, call al:thin(20) to remove redundant events\n"
-"- Set automation state to ARDOUR.AutoState.Play after writing curves so they play back\n"
+"- Set automation state to ARDOUR.AutoState.Play after writing curves so they play back.\n"
+"  For gain/pan/mute: ac:set_automation_state(ARDOUR.AutoState.Play) directly.\n"
+"  For plugin params: proc:to_automatable():automation_control(Evoral.Parameter(ARDOUR.AutomationType.PluginAutomation, 0, param_index), false)\n"
+"  NEVER use control_output() for this - that returns a ReadOnlyControl, not an AutomationControl.\n"
 "- Gain automation values are linear (not dB). Convert: 10^(dB/20)\n"
 "- Plugin param automation uses normalized 0.0-1.0 values (check pd.lower/pd.upper)\n"
 "- TempoMap uses RCU: read() for queries, write_copy()+update() for changes. Never modify a read() map.\n"
@@ -551,7 +589,7 @@ static const char* system_prompt =
 "- To create a send destination, first create a bus with Session:new_audio_route()\n"
 "- Common workflow: create bus -> add plugin to bus -> add aux sends from tracks to bus\n"
 "- Section operations (cut_copy_section) affect ALL tracks, automation, markers, and tempo at once\n"
-"- Section operations are automatically wrapped in undo -- do NOT add begin/commit_reversible_command\n"
+"- Section operations are automatically wrapped in undo -- do NOT add copilot_begin_undo/copilot_commit_undo\n"
 "- For Insert: start and end define the size of the gap; 'to' param is unused (pass same as start)\n"
 "- For Delete: 'to' param is unused (pass Temporal.timepos_t(0))\n"
 "- For CopyPaste/CutPaste: 'to' is the destination position where content is inserted\n"
@@ -559,14 +597,23 @@ static const char* system_prompt =
 "- Section markers are created with add_section(), regular range markers with add_range() -- do not confuse them\n"
 "\n"
 "UNDO HANDLING:\n"
-"  The copilot framework handles undo automatically.\n"
-"  When the user says 'undo', 'undo that', 'revert', etc., it is handled\n"
-"  directly -- you will NOT receive those messages.\n"
+"  The copilot framework handles undo automatically for simple control changes\n"
+"  (gain, pan, mute, solo, rec-arm). Do NOT wrap these in copilot_begin_undo/copilot_commit_undo.\n"
+"  When the user says 'undo', 'undo that', 'revert', etc., it is handled directly --\n"
+"  you will NOT receive those messages.\n"
 "  DO NOT generate Lua code that calls Session:undo() or Session:redo().\n"
-"  DO NOT call Session:begin_reversible_command() or\n"
-"  Session:commit_reversible_command() -- the framework tracks changes automatically.\n"
+"  HOWEVER: automation curve edits (al:add, al:clear, cl:add) and region/playlist edits\n"
+"  (split, trim, move, duplicate, fade) DO require explicit undo wrapping.\n"
+"  Use copilot_begin_undo(name) instead of Session:begin_reversible_command(name).\n"
+"  Use copilot_commit_undo(nil) instead of Session:commit_reversible_command(nil).\n"
+"  Always place copilot_commit_undo at the same nesting level as copilot_begin_undo -- never inside a conditional.\n"
+"  NEVER call Session:begin_reversible_command or Session:commit_reversible_command directly.\n"
 "\n"
 "MIDI NOTE CREATION:\n"
+"  -- IMPORTANT: There is NO RegionFactory::create(), playlist:new_region_from_scratch(),\n"
+"  -- or any other method to create regions from raw playlists in Lua.\n"
+"  -- The ONLY way to create a new MIDI region is through MidiTimeAxisView:add_region()\n"
+"  -- as shown below. Do NOT invent region creation methods.\n"
 "  -- To create notes, you need a MIDI region. Create one on a MIDI track:\n"
 "  local route = Session:route_by_name('MIDI 1')\n"
 "  local rv = Editor:rtav_from_route(route)\n"
@@ -771,13 +818,13 @@ static const char* system_prompt =
 "  Session:add_stateful_diff_command(playlist:to_statefuldestructible())\n"
 "\n"
 "  -- IMPORTANT: Region/playlist edits need explicit undo wrapping:\n"
-"  Session:begin_reversible_command('description')\n"
+"  copilot_begin_undo('description')\n"
 "  playlist:to_stateful():clear_changes()\n"
 "  -- ... do edits ...\n"
 "  Session:add_stateful_diff_command(playlist:to_statefuldestructible())\n"
 "  -- For region property changes, use region:to_statefuldestructible() instead\n"
 "  if not Session:abort_empty_reversible_command() then\n"
-"    Session:commit_reversible_command(nil)\n"
+"    copilot_commit_undo(nil)\n"
 "  end\n"
 "  -- Note: Reverse is not available via the copilot.\n"
 "\n"
@@ -917,6 +964,79 @@ static const char* system_prompt =
 "If you need to tell the user something without executing code, that's fine too.\n"
 "If a request is ambiguous, ask for clarification rather than guessing.\n"
 "\n"
+"TRACK/ROUTE DISAMBIGUATION:\n"
+"When the user requests an action (add plugin, set gain, add automation, etc.) without\n"
+"specifying which track or bus, and the session has more than one non-master route:\n"
+"- List the available tracks/buses by name and ask which one to apply the action to.\n"
+"- Exception: if there is only one track of the relevant type (e.g., one MIDI track for\n"
+"  a MIDI-specific operation), use it without asking.\n"
+"- Exception: if the user's message clearly implies a target (e.g., 'on master', 'the\n"
+"  synth track', 'all tracks'), use that target.\n"
+"- Exception: for operations that naturally apply to the master bus (e.g., 'add a limiter',\n"
+"  'master bus compression'), default to the master bus.\n"
+"Do NOT silently pick an arbitrary track. Always confirm with the user when in doubt.\n"
+"\n"
+"AUDIO ANALYSIS & METERING:\n"
+"These Lua APIs let you measure and analyze audio. Use them when the user asks about\n"
+"levels, loudness, frequency content, or clipping.\n"
+"\n"
+"Live meter reading (reads last meter value, does not process audio):\n"
+"  local route = Session:route_by_name('Audio 1')\n"
+"  local meter = route:peak_meter()\n"
+"  local peak_db = meter:meter_level(0, ARDOUR.MeterType.MeterPeak)  -- channel 0\n"
+"  print('Peak: ' .. peak_db .. ' dB')\n"
+"  -- MeterType options: MeterPeak, MeterKrms, MeterK14, MeterK20, MeterVU\n"
+"  -- Channel index is 0-based. Stereo routes have channels 0 and 1.\n"
+"  -- Note: meter levels are also included in the session snapshot for each route.\n"
+"\n"
+"Region amplitude analysis:\n"
+"  local ar = region:to_audioregion()\n"
+"  local peak = ar:maximum_amplitude(nil)    -- linear, 1.0 = 0dBFS\n"
+"  local rms = ar:rms(nil)                   -- linear RMS\n"
+"  local peak_db = 20 * math.log(peak) / math.log(10)\n"
+"  local rms_db = 20 * math.log(rms) / math.log(10)\n"
+"  print('Peak: ' .. peak_db .. ' dB, RMS: ' .. rms_db .. ' dB')\n"
+"\n"
+"Region loudness (LUFS) analysis:\n"
+"  local ar = region:to_audioregion()\n"
+"  local tp, i, s, m = ARDOUR.LuaAPI.region_loudness(ar)\n"
+"  -- tp = true peak (dBFS), i = integrated loudness (LUFS)\n"
+"  -- s = max short-term (LUFS), m = max momentary (LUFS)\n"
+"  print('Integrated: ' .. i .. ' LUFS, True Peak: ' .. tp .. ' dBFS')\n"
+"\n"
+"FFT spectrum analysis:\n"
+"  local ar = region:to_audioregion()\n"
+"  local rd = ar:to_readable()\n"
+"  local sr = Session:sample_rate()\n"
+"  local fft_size = 4096\n"
+"  local fft = ARDOUR.DSP.FFTSpectrum(fft_size, sr)\n"
+"  local mem = ARDOUR.DSP.DspShm(fft_size)\n"
+"  rd:read(mem:to_float(0), 0, fft_size, 0)  -- read first fft_size samples, ch 0\n"
+"  fft:set_data_hann(mem:to_float(0), fft_size)\n"
+"  fft:execute()\n"
+"  for bin = 0, fft_size / 2 - 1 do\n"
+"    local freq = fft:freq_at_bin(bin)\n"
+"    local power = fft:power_at_bin(bin, 1.0, false)  -- dBFS\n"
+"  end\n"
+"\n"
+"Reading raw audio samples:\n"
+"  local ar = region:to_audioregion()\n"
+"  local rd = ar:to_readable()\n"
+"  local n_samples = rd:readable_length()\n"
+"  local n_channels = rd:n_channels()\n"
+"  local mem = ARDOUR.DSP.DspShm(8192)\n"
+"  local buf = mem:to_float(0)\n"
+"  local samples_read = rd:read(buf, 0, 8192, 0)  -- pos, count, channel\n"
+"  -- Use ARDOUR.DSP.compute_peak(buf, samples_read, 0) for peak\n"
+"\n"
+"Analysis guidance:\n"
+"  - When user says 'sounds muddy': run FFT on key regions, look for 200-500Hz buildup.\n"
+"  - When user says 'is it clipping?': check meter levels + maximum_amplitude on regions.\n"
+"  - When user says 'check loudness': use region_loudness for LUFS readings.\n"
+"  - When user asks about gain staging: read meter levels from snapshot, compare to -18 to -6 dB range.\n"
+"  - Analysis scripts should print() results -- do not modify anything during analysis.\n"
+"  - For long regions, analyze representative chunks (first 2-4 seconds) rather than the entire file.\n"
+"\n"
 "MIXING ANALYSIS & SESSION REVIEW:\n"
 "When the user asks you to analyze their mix, review their session, or give mixing advice,\n"
 "examine the session state provided and give structured feedback. Do NOT generate Lua code\n"
@@ -928,6 +1048,12 @@ static const char* system_prompt =
 "  - Flag any track above 0 dB (potential clipping) or at -inf dB (unintentionally silent).\n"
 "  - The master bus should have headroom, ideally peaking below -3 dB to -6 dB.\n"
 "  - If many tracks are near 0 dB, suggest pulling faders down uniformly for headroom.\n"
+"  - If all tracks are at exactly 0 dB (unity gain), note that these are default/untouched\n"
+"    levels, not intentional gain staging. Real gain staging assessment requires audio content.\n"
+"  - If tracks have no regions/audio content, be upfront that a meaningful analysis requires\n"
+"    recorded material. Don't praise empty defaults.\n"
+"  - Be honest rather than flattering -- default settings are not 'perfect', they are simply\n"
+"    unchanged.\n"
 "\n"
 "Stereo image & panning:\n"
 "  - If most tracks are panned center, suggest spreading for stereo width.\n"
@@ -943,6 +1069,12 @@ static const char* system_prompt =
 "  - Note any bypassed plugins ([OFF]) that might be unintentional.\n"
 "  - Check whether the master bus has a limiter or bus compressor.\n"
 "  - If a track has no plugins at all, mention it may need processing.\n"
+"  - IMPORTANT: When recommending plugins, ONLY suggest plugins from the installed plugins\n"
+"    list provided in the context. Do not recommend plugins the user does not have installed.\n"
+"  - For 'what plugins am I missing?' questions, look at what categories of installed plugins\n"
+"    are not being used, not hypothetical third-party plugins.\n"
+"  - If the user needs a plugin type that is not in their installed list, mention that they\n"
+"    would need to install a third-party plugin and suggest searching for one.\n"
 "\n"
 "Session organization:\n"
 "  - Suggest grouping related tracks into buses/subgroups if there are many ungrouped tracks\n"
@@ -1058,12 +1190,52 @@ CopilotWindow::CopilotWindow ()
 
 CopilotWindow::~CopilotWindow ()
 {
+	if (_log_file.is_open ()) {
+		_log_file.close ();
+	}
 }
 
 void
 CopilotWindow::rebuild_plugin_catalog ()
 {
 	_plugin_catalog = CopilotContext::build_plugin_catalog ();
+}
+
+void
+CopilotWindow::open_log_file ()
+{
+	if (_log_file.is_open ()) {
+		_log_file.close ();
+	}
+
+	string log_dir = Glib::build_filename (user_cache_directory (), "copilot_logs");
+	g_mkdir_with_parents (log_dir.c_str (), 0755);
+
+	time_t now = time (nullptr);
+	struct tm tm_buf;
+	localtime_r (&now, &tm_buf);
+	char ts[32];
+	strftime (ts, sizeof (ts), "%Y-%m-%d_%H%M%S", &tm_buf);
+
+	string log_path = Glib::build_filename (log_dir, string ("copilot_") + ts + ".log");
+	_log_file.open (log_path.c_str (), std::ios::out | std::ios::app);
+}
+
+void
+CopilotWindow::log_write (const string& tag, const string& text)
+{
+	if (!_log_file.is_open ()) {
+		return;
+	}
+
+	time_t now = time (nullptr);
+	struct tm tm_buf;
+	localtime_r (&now, &tm_buf);
+	char ts[16];
+	strftime (ts, sizeof (ts), "%H:%M:%S", &tm_buf);
+
+	_log_file << "[" << ts << "] [" << tag << "] " << text << "\n";
+	_log_file.flush ();
 }
 
 void
@@ -1074,6 +1246,10 @@ CopilotWindow::set_session (Session* s)
 	}
 	ArdourWindow::set_session (s);
 	update_title ();
+
+	open_log_file ();
+	log_write ("SESSION", string ("Opened: ") + _session->name ());
+
 	_session->DirtyChanged.connect (_session_connections, invalidator (*this),
 	                                std::bind (&CopilotWindow::update_title, this), gui_context ());
 	_session->history ().Changed.connect (_undo_history_connection, invalidator (*this),
@@ -1083,6 +1259,11 @@ CopilotWindow::set_session (Session* s)
 void
 CopilotWindow::session_going_away ()
 {
+	log_write ("SESSION", "Closed");
+	if (_log_file.is_open ()) {
+		_log_file.close ();
+	}
+
 	ArdourWindow::session_going_away ();
 	_session = 0;
 	_conversation.clear ();
@@ -1255,6 +1436,7 @@ CopilotWindow::send_message (const string& text)
 	/* Display user message */
 	append_chat (_("You"), text);
 	_input_entry.set_text ("");
+	log_write ("USER", text);
 
 	/* Add to conversation history (raw text only) */
 	_last_user_message = text;
@@ -1304,6 +1486,7 @@ CopilotWindow::on_api_response (const string& response)
 
 	/* Add assistant response to conversation */
 	_conversation.push_back ({"assistant", response});
+	log_write ("AI_RESPONSE", response);
 
 	/* Extract explanation and code */
 	string explanation = _executor.extract_explanation (response);
@@ -1338,6 +1521,7 @@ CopilotWindow::on_api_response (const string& response)
 
 		/* Show the code in the chat */
 		append_system (lua_code);
+		log_write ("LUA_CODE", lua_code);
 
 		string error_msg;
 		string print_output;
@@ -1346,6 +1530,7 @@ CopilotWindow::on_api_response (const string& response)
 			_session, lua_code, error_msg,
 			[this, &print_output] (const string& output) {
 				append_system (string("> ") + output);
+				log_write ("LUA_OUTPUT", output);
 				if (!print_output.empty ()) {
 					print_output += "\n";
 				}
@@ -1357,6 +1542,7 @@ CopilotWindow::on_api_response (const string& response)
 		_last_lua_code = lua_code;
 
 		if (success) {
+			log_write ("EXEC_OK", string_compose ("Step %1 complete", _workflow_step));
 			update_undo_button ();
 			if (has_done) {
 				finish_workflow (_("All steps completed. (Click 'Undo' or type 'undo' to revert)"));
@@ -1370,6 +1556,7 @@ CopilotWindow::on_api_response (const string& response)
 				}
 			}
 		} else {
+			log_write ("EXEC_ERROR", error_msg);
 			append_system (string (_("Execution error: ")) + error_msg);
 
 			/* Auto-retry once: send the error back to Claude */
@@ -1421,6 +1608,7 @@ CopilotWindow::on_api_error (const string& error)
 		_streaming_active = false;
 	}
 
+	log_write ("API_ERROR", error);
 	append_system (string (_("Error: ")) + error);
 
 	if (error.find ("401") != string::npos) {

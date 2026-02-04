@@ -19,6 +19,11 @@
 #include <string>
 
 #include "ardour/session.h"
+#include "ardour/route.h"
+#include "ardour/plugin_insert.h"
+#include "ardour/automation_control.h"
+#include "ardour/automatable.h"
+#include "ardour/types.h"
 
 #include "lua/luastate.h"
 #include "LuaBridge/LuaBridge.h"
@@ -191,11 +196,57 @@ CopilotExecutor::execute (Session* session,
 
 	try {
 		lua.do_command ("function ardour () end");
+
+		/* Inject safe undo wrappers — copilot_begin_undo aborts any
+		 * existing open transaction before starting a new one, preventing
+		 * double-begin crashes. copilot_commit_undo is a thin wrapper
+		 * for consistency. */
+		lua.do_command (
+			"function copilot_begin_undo(name)\n"
+			"  Session:abort_reversible_command()\n"
+			"  Session:begin_reversible_command(name)\n"
+			"end\n"
+			"\n"
+			"function copilot_commit_undo(cmd)\n"
+			"  Session:commit_reversible_command(cmd)\n"
+			"end\n"
+		);
+
+		/* Inject helper for plugin automation with correct API usage */
+		lua.do_command (
+			"function copilot_set_plugin_automation(proc, param_index, points, description)\n"
+			"  local al, cl, pd = ARDOUR.LuaAPI.plugin_automation(proc, param_index)\n"
+			"  if al:isnil() then return false end\n"
+			"  copilot_begin_undo(description or 'Automate plugin')\n"
+			"  local before = al:get_state()\n"
+			"  for _, pt in ipairs(points) do\n"
+			"    cl:add(Temporal.timepos_t(pt[1]), math.max(pd.lower, math.min(pd.upper, pt[2])), false, true)\n"
+			"  end\n"
+			"  if #points > 10 then al:thin(20) end\n"
+			"  local after = al:get_state()\n"
+			"  Session:add_command(al:memento_command(before, after))\n"
+			"  copilot_commit_undo(nil)\n"
+			"  local ac = proc:to_automatable():automation_control(\n"
+			"    Evoral.Parameter(ARDOUR.AutomationType.PluginAutomation, 0, param_index), false)\n"
+			"  if ac and not ac:isnil() then ac:set_automation_state(ARDOUR.AutoState.Play) end\n"
+			"  return true\n"
+			"end\n"
+		);
+
+		/* Pre-execution safety: abort any stale transaction left from
+		 * a prior operation before running new Lua code. */
+		session->abort_reversible_command ();
+
 		int result = lua.do_command (lua_code);
 		if (result != 0) {
 			error_msg = "Lua execution failed";
 			return false;
 		}
+
+		/* Safety net: clean up any undo transaction the Lua code left open
+		 * (e.g., begin_reversible_command called but commit/abort skipped).
+		 * abort_reversible_command is a no-op when no transaction is open. */
+		session->abort_reversible_command ();
 	} catch (luabridge::LuaException const& e) {
 		error_msg = string ("Lua error: ") + e.what ();
 		return false;
@@ -231,6 +282,9 @@ CopilotExecutor::execute (Session* session,
 		} else {
 			undo_record.native_undo_count = 0;
 		}
+
+		/* Safety net: ensure any plugin automation with events is set to Play */
+		ensure_plugin_automation_playback (session);
 	} else {
 		/* Execution failed -- abort any open reversible command left by the
 		 * failed script (e.g. begin_reversible_command was called but
@@ -253,4 +307,43 @@ CopilotExecutor::execute (Session* session,
 	}
 
 	return success;
+}
+
+void
+CopilotExecutor::ensure_plugin_automation_playback (Session* session)
+{
+	if (!session) {
+		return;
+	}
+
+	std::shared_ptr<RouteList const> routes = session->get_routes ();
+	if (!routes) {
+		return;
+	}
+
+	for (auto const& route : *routes) {
+		for (uint32_t pi = 0; ; ++pi) {
+			std::shared_ptr<Processor> proc = route->nth_plugin (pi);
+			if (!proc) {
+				break;
+			}
+			std::shared_ptr<PluginInsert> insert = std::dynamic_pointer_cast<PluginInsert> (proc);
+			if (!insert) {
+				continue;
+			}
+
+			std::set<Evoral::Parameter> params;
+			insert->what_has_existing_automation (params);
+
+			for (auto const& param : params) {
+				if (param.type () != PluginAutomation) {
+					continue;
+				}
+				std::shared_ptr<AutomationControl> ac = insert->automation_control (param, false);
+				if (ac && ac->automation_state () == ARDOUR::Off) {
+					ac->set_automation_state (ARDOUR::Play);
+				}
+			}
+		}
+	}
 }

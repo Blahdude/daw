@@ -173,6 +173,13 @@ namespace ARDOUR { namespace LuaAPI {
 	 */
 	int get_plugin_insert_property (lua_State *p);
 
+	/** Get LUFS loudness metrics for an AudioRegion
+	 *
+	 * @param lua: lua arguments: AudioRegion shared_ptr
+	 * @returns 4 values: true_peak (dBFS), integrated (LUFS), short_term (LUFS), momentary (LUFS)
+	 */
+	int region_loudness (lua_State *lua);
+
 	/**
 	 * A convenience function to get a Automation Lists and ParameterDescriptor
 	 * for a given plugin control.
@@ -284,6 +291,21 @@ namespace ARDOUR { namespace LuaAPI {
 	 * for the current session
 	 */
 	int simple_export (lua_State* L);
+
+	/** nil-safe CFunction wrapper for Session::new_audio_track
+	 * Handles nil RouteGroup argument without crashing.
+	 */
+	int new_audio_track (lua_State *L);
+
+	/** nil-safe CFunction wrapper for Session::new_audio_route
+	 * Handles nil RouteGroup argument without crashing.
+	 */
+	int new_audio_route (lua_State *L);
+
+	/** nil-safe CFunction wrapper for Session::new_midi_track
+	 * Handles nil RouteGroup argument without crashing.
+	 */
+	int new_midi_track (lua_State *L);
 
 	/**
 	 * Delay execution until next process cycle starts.

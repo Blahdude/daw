@@ -49,7 +49,7 @@ LevelMeterBase::LevelMeterBase (Session* s, PBD::EventLoop::InvalidationRecord* 
 	: parent_invalidator(ir)
 	, _meter (0)
 	, _meter_orientation(o)
-	, regular_meter_width (6)
+	, regular_meter_width (4)
 	, meter_length (0)
 	, thin_meter_width(2)
 	, max_peak (minus_infinity())

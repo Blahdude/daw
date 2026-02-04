@@ -481,8 +481,8 @@ FoldbackStrip::init ()
 	_comment_button.set_text_ellipsize (Pango::ELLIPSIZE_END);
 	_comment_button.set_layout_ellipsize_width (PX_SCALE (_width) * PANGO_SCALE);
 
-	_global_vpacker.set_border_width (1);
-	_global_vpacker.set_spacing (2);
+	_global_vpacker.set_border_width (CairoWidget::flat_buttons() ? 0 : 1);
+	_global_vpacker.set_spacing (CairoWidget::flat_buttons() ? 5 : 2);
 
 	/* Packing is from top down to the send box. The send box
 	 * needs the most room and takes all left over space
@@ -525,8 +525,8 @@ FoldbackStrip::init ()
 	_global_vpacker.pack_end (*_insert_box, Gtk::PACK_SHRINK);
 
 	_global_frame.add (_global_vpacker);
-	_global_frame.set_shadow_type (Gtk::SHADOW_IN);
 	_global_frame.set_name ("MixerStripFrame");
+	_global_frame.set_edge_color (UIConfiguration::instance().color ("strip frame edge"));
 	add (_global_frame);
 
 	_number_label.signal_button_press_event().connect (sigc::mem_fun (*this, &FoldbackStrip::number_button_press), false);
